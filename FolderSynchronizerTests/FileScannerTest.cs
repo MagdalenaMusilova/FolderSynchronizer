@@ -67,6 +67,7 @@ namespace FolderSynchronizerTests
 		}
 
 
+
 		[Test]
 		public void SplitFileIntoChunks_UnevenChunks_Pass() {
 			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
@@ -161,84 +162,6 @@ namespace FolderSynchronizerTests
 			List<Chunk> chunks2 = _scanner.SplitFileIntoChunks(filePath2);
 			if (chunks1.SequenceEqual(chunks2)) {
 				Assert.Warn("Files with different content have the same chunks.");
-			} else {
-				Assert.Pass();
-			}
-		}
-
-
-
-		[Test]
-		public void GetFileChecksum_SimpleFile_Pass() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string filePath = CreateFile(folderPath);
-			_scanner.GetFileChecksum(filePath);
-		}
-
-		[Test]
-		public void GetFileChecksum_SubdirectoryFile_Pass() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name, "sub", "subsub");
-			// create source folder
-			string filePath = CreateFile(folderPath);
-			_scanner.GetFileChecksum(filePath);
-		}
-
-		[Test]
-		public void GetFileChecksum_OneCharFile_Pass() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string filePath = CreateFile(folderPath, 1);
-			_scanner.GetFileChecksum(filePath);
-		}
-
-		[Test]
-		public void GetFileChecksum_EmptyFile_Pass() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string filePath = CreateFile(folderPath, 0);
-			_scanner.GetFileChecksum(filePath);
-		}
-
-		[Test]
-		public void GetFileChecksum_CompareFileToItself_Equeals() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string filePath = CreateFile(folderPath);
-			string checksum1 = _scanner.GetFileChecksum(filePath);
-			string checksum2 = _scanner.GetFileChecksum(filePath);
-			Assert.That(checksum1 == checksum2, "Getting checksum of the same file multiple times gains different results.");
-		}
-
-		[Test]
-		public void GetFileChecksum_CompareSameContentDifferentFiles_Equeals() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string filePath1 = CreateFile(folderPath, loremIpsum);
-			string filePath2 = CreateFile(folderPath, loremIpsum);
-			string checksum1 = _scanner.GetFileChecksum(filePath1);
-			string checksum2 = _scanner.GetFileChecksum(filePath2);
-			Assert.That(checksum1 == checksum2, "Checksums of two files with the same content have different results.");
-		}
-
-		[Test]
-		public void GetFileChecksum_CompareDifferentFiles_DontEqual() {
-			string folderPath = Path.Combine(_basePath, TestContext.CurrentContext.Test.Name);
-			// create source folder
-			string content1 = loremIpsum.Substring(0, loremIpsum.Length / 2);
-			string content2 = loremIpsum.Substring(loremIpsum.Length / 2);
-			if (content1 == content2) {
-				Assert.Inconclusive("The assumed different content of the two files in this test is the same, thus this test can't be performed correctly. Please adjust the test so the file have different contents.");
-			}
-
-			string filePath1 = CreateFile(folderPath, content1);
-			string filePath2 = CreateFile(folderPath, content2);
-
-			// split file into chunks
-			List<Chunk> chunks1 = _scanner.SplitFileIntoChunks(filePath1);
-			List<Chunk> chunks2 = _scanner.SplitFileIntoChunks(filePath2);
-			if (chunks1.SequenceEqual(chunks2)) {
-				Assert.Warn("Two different files with different content have the same checksum.");
 			} else {
 				Assert.Pass();
 			}

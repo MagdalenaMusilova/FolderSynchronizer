@@ -1,5 +1,4 @@
-﻿using FolderSynchronizer.Manifest;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
@@ -43,15 +42,6 @@ namespace FolderSynchronizer
 
 			return chunks;
 		}
-
-		public string GetFileChecksum(string pathToFile) {
-			byte[] rawHash;
-			using (var stream = _fs.File.OpenRead(pathToFile)) {
-				rawHash = MD5.HashData(stream);
-			}
-			return Convert.ToHexString(rawHash);
-		}
-
 
 		private static string GetBufferHash(byte[] bytes) {
 			byte[] rawHash = MD5.HashData(bytes);

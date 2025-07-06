@@ -1,5 +1,4 @@
-﻿using FolderSynchronizer.Manifest;
-using spkl.Diffs;
+﻿using spkl.Diffs;
 using System.IO;
 using System.IO.Abstractions;
 using System.Text.Json;
@@ -8,7 +7,6 @@ namespace FolderSynchronizer
 {
     public class Synchronizer
     {
-        public static readonly string manifestPathRel = "manifest.json";
         private readonly IFileSystem _fs;
         private readonly FileScanner _scanner;
 
@@ -19,11 +17,7 @@ namespace FolderSynchronizer
 
         public void Synchronize(string pathToFolder, string pathToReplica) {
             if (_fs.Directory.Exists(pathToReplica)) { //check if this is the first time syncing this file
-                ReplicaManifest manifest = GetManifest(Path.Combine(pathToReplica, "manifest.json"));
-                if (manifest.FolderPath != pathToFolder) {
-                    throw new ArgumentException($"The replica folder is already used for syncing another folder. It's current used as replica for {manifest.FolderPath}");
-                }
-                UpdateSync(pathToFolder, pathToReplica, manifest);
+                UpdateSync(pathToFolder, pathToReplica);
             } else {
                 FullSync(pathToFolder, pathToReplica);
             }
@@ -31,29 +25,28 @@ namespace FolderSynchronizer
 
         private void FullSync(string pathToFolder, string pathToReplica) {
 			CopyAllFilesInDirectory(pathToFolder, pathToReplica);
-            AddManifestToReplica(pathToFolder, pathToReplica);
 		}
 
-        private void UpdateSync(string pathToFolder, string pathToReplica, ReplicaManifest manifest) {
-            List<FileDetails> fileDetails = new List<FileDetails>();
+        private void UpdateSync(string pathToFolder, string pathToReplica) {
+            string[] filePathsAbs = _fs.Directory.GetFiles(pathToFolder, "*", SearchOption.AllDirectories);
+            string[] repFilesPathsAbs = _fs.Directory.GetFiles(pathToReplica, "*", SearchOption.AllDirectories);
 
-            string[] filesPathsAbs = _fs.Directory.GetFiles(pathToFolder, "*", SearchOption.AllDirectories);
-            string[] filePaths = filesPathsAbs.Select(path => Path.GetRelativePath(pathToFolder, path)).ToArray();
+			HashSet<string> filePaths = filePathsAbs.Select(path => Path.GetRelativePath(pathToFolder, path)).ToHashSet();
+			HashSet<string> repFilePaths = repFilesPathsAbs.Select(path => Path.GetRelativePath(pathToReplica, path)).ToHashSet();
+
             foreach (string path in filePaths) {
 				string sourceFilePath = Path.Combine(pathToFolder, path);
 				string replicaFilePath = Path.Combine(pathToReplica, path);
 
-				if (manifest.Files.ContainsKey(path)) { //possibly updated file
+                if (repFilePaths.Contains(path)) {  //possibly updated file
 					List<Chunk> sourceChunks = _scanner.SplitFileIntoChunks(sourceFilePath);
-                    if (sourceChunks.SequenceEqual(manifest.Files[path].Chunks)) {  //file was not updated -> no change
-                        continue;
-                    }
-
-                    FileSynchronizer.SynchronizeFile(_fs, sourceFilePath, replicaFilePath, sourceChunks, manifest.Files[path].Chunks);
-					fileDetails.Add(GetFileDetails(replicaFilePath));
-				} else {    //completely new file
+                    List<Chunk> replicaChunks = _scanner.SplitFileIntoChunks(replicaFilePath);
+					if (sourceChunks.SequenceEqual(replicaChunks)) {  //file was not updated -> no change
+						continue;
+					}
+					FileSynchronizer.SynchronizeFile(_fs, sourceFilePath, replicaFilePath, sourceChunks, replicaChunks);
+				} else {
 					_fs.File.Copy(sourceFilePath, replicaFilePath);
-                    fileDetails.Add(GetFileDetails(replicaFilePath));
 				}
             }
         }
@@ -77,63 +70,6 @@ namespace FolderSynchronizer
                 string dest = Path.Combine(pathToDestReplica, subfolderPath);
                 CopyAllFilesInDirectory(source, dest);
             }
-        }
-
-
-
-        private void AddManifestToReplica(string pathToFolder, string pathToReplica, ReplicaManifest? manifest = null) {
-            manifest = manifest ?? CreateNewManifest(pathToFolder, pathToReplica);
-			string jsonstring = JsonSerializer.Serialize(manifest);
-			string manifestPath = Path.Combine(pathToReplica, manifestPathRel);
-			_fs.File.WriteAllText(manifestPath, jsonstring);
-		}
-
-        private ReplicaManifest CreateNewManifest(string pathToFolder, string pathToReplica) {
-			Dictionary<string, FileDetails> fileDetails = new Dictionary<string, FileDetails>();
-            string[] filePaths = _fs.Directory.GetFiles(pathToReplica, "*", SearchOption.AllDirectories);
-            foreach (string path in filePaths) {
-				string relativePath = Path.GetRelativePath(pathToReplica, path);
-				fileDetails.Add(relativePath, GetFileDetails(path));
-            }
-
-            DateTime created = DateTime.Now;
-            ReplicaManifest manifest = new() {
-                Created = created,
-                Updated = created,
-                FolderPath = pathToFolder,
-                Files = fileDetails
-            };
-            return manifest;
-        }
-
-		private FileDetails GetFileDetails(string pathToFile) {			
-			List<Chunk> chunks = _scanner.SplitFileIntoChunks(pathToFile);
-			IFileInfo fileInfo = _fs.FileInfo.New(pathToFile);
-			string checksum = _scanner.GetFileChecksum(pathToFile);
-            return new FileDetails() {
-                Chunks = chunks,
-                Size = fileInfo.Length,
-                Checksum = checksum
-            };
-		}
-
-		private ReplicaManifest GetManifest(string pathToManifest) {
-            if (!_fs.File.Exists(pathToManifest)) {
-                throw new FileNotFoundException("The replica folder does not contain a manifest.");
-            }
-
-            string jsonString = _fs.File.ReadAllText(pathToManifest);
-            ReplicaManifest manifest;
-			try {
-				manifest = JsonSerializer.Deserialize<ReplicaManifest>(jsonString);
-                if (manifest == null) {
-                    throw new Exception();
-                }
-			} catch (Exception) {
-                throw new InvalidDataException("The manifest file is corrupted.");
-			}
-            
-            return manifest;
         }
     }
 }

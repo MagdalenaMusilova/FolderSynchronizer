@@ -40,6 +40,8 @@ public class FolderSynchronizerTest
 		}
 	}
 
+
+
 	private string CreateFile(string folderPath, int size) {
 		if (!_fs.Directory.Exists(folderPath)) {
 			_fs.Directory.CreateDirectory(folderPath);
