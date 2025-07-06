@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="spkl.Diffs" Version="2.1.0" />
     <PackageReference Include="TestableIO.System.IO.Abstractions" Version="22.0.14" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.0.14" />
   </ItemGroup>
