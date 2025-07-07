@@ -1,6 +1,8 @@
-﻿using spkl.Diffs;
-using System.IO;
+﻿using Microsoft.Extensions.Logging;
+using System.Collections;
 using System.IO.Abstractions;
+using System.IO.MemoryMappedFiles;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FolderSynchronizer
@@ -8,68 +10,83 @@ namespace FolderSynchronizer
     public class Synchronizer
     {
         private readonly IFileSystem _fs;
-        private readonly FileScanner _scanner;
 
-        public Synchronizer(IFileSystem? fileSystem = null, int chunkSize = 4096) {
-            _fs = fileSystem ?? new FileSystem();
-            _scanner = new FileScanner(_fs, chunkSize);
+		public Synchronizer(IFileSystem fileSystem) {
+            _fs = fileSystem;
         }
 
         public void Synchronize(string pathToFolder, string pathToReplica) {
-            if (_fs.Directory.Exists(pathToReplica)) { //check if this is the first time syncing this file
-                UpdateSync(pathToFolder, pathToReplica);
-            } else {
-                FullSync(pathToFolder, pathToReplica);
+            if (!_fs.Directory.Exists(pathToFolder)) {
+                throw new DirectoryNotFoundException("The directory to synchronize was not found.");
             }
+
+			SyncFolder(pathToFolder, pathToReplica);
         }
 
-        private void FullSync(string pathToFolder, string pathToReplica) {
-			CopyAllFilesInDirectory(pathToFolder, pathToReplica);
+        private void SyncFolder(string pathToFolder, string pathToReplica) {
+			if (!_fs.Directory.Exists(pathToReplica)) {
+				_fs.Directory.CreateDirectory(pathToReplica);
+			}
+            SyncFiles(pathToFolder, pathToReplica);
+
+			HashSet<string> orgFoldersRel = _fs.Directory.GetDirectories(pathToFolder)
+				.Select(path => Path.GetRelativePath(pathToFolder, path))
+				.ToHashSet();
+			HashSet<string> replicaFoldersRel = _fs.Directory.GetDirectories(pathToFolder)
+				.Select(path => Path.GetRelativePath(pathToFolder, path))
+				.ToHashSet();
+
+			foreach (var folderPathRel in orgFoldersRel) {
+				string orgFolderPathAbs = Path.Combine(pathToFolder, folderPathRel);
+				string replicaFolderPathAbs = Path.Combine(pathToFolder, folderPathRel);
+				SyncFolder(orgFolderPathAbs, replicaFolderPathAbs);
+			}
+
+            var deletedFolders = replicaFoldersRel.Except(orgFoldersRel);
+            foreach (var folderPathRel in deletedFolders) {
+				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
+                _fs.Directory.Delete(folderPathAbs, true);
+            }
 		}
 
-        private void UpdateSync(string pathToFolder, string pathToReplica) {
-            string[] filePathsAbs = _fs.Directory.GetFiles(pathToFolder, "*", SearchOption.AllDirectories);
-            string[] repFilesPathsAbs = _fs.Directory.GetFiles(pathToReplica, "*", SearchOption.AllDirectories);
+		private void SyncFiles(string pathToFolder, string pathToReplica) {
+			HashSet<string> orgFilePaths = _fs.Directory.GetFiles(pathToFolder)
+				.Select(path => Path.GetRelativePath(pathToFolder, path))
+				.ToHashSet();
+			HashSet<string> repFilePaths = _fs.Directory.GetFiles(pathToReplica)
+				.Select(path => Path.GetRelativePath(pathToReplica, path))
+				.ToHashSet();
 
-			HashSet<string> filePaths = filePathsAbs.Select(path => Path.GetRelativePath(pathToFolder, path)).ToHashSet();
-			HashSet<string> repFilePaths = repFilesPathsAbs.Select(path => Path.GetRelativePath(pathToReplica, path)).ToHashSet();
-
-            foreach (string path in filePaths) {
+            foreach (string path in orgFilePaths) {
 				string sourceFilePath = Path.Combine(pathToFolder, path);
 				string replicaFilePath = Path.Combine(pathToReplica, path);
 
-                if (repFilePaths.Contains(path)) {  //possibly updated file
-					List<Chunk> sourceChunks = _scanner.SplitFileIntoChunks(sourceFilePath);
-                    List<Chunk> replicaChunks = _scanner.SplitFileIntoChunks(replicaFilePath);
-					if (sourceChunks.SequenceEqual(replicaChunks)) {  //file was not updated -> no change
-						continue;
-					}
-					FileSynchronizer.SynchronizeFile(_fs, sourceFilePath, replicaFilePath, sourceChunks, replicaChunks);
-				} else {
-					_fs.File.Copy(sourceFilePath, replicaFilePath);
+                if (repFilePaths.Contains(path) && AreFilesEqual(sourceFilePath, replicaFilePath)) {  //file was not updated -> nothing has to be done
+					continue;
 				}
-            }
-        }
-
-        private void CopyAllFilesInDirectory(string pathToSourceFolder, string pathToDestReplica) {
-            if (!_fs.Directory.Exists(pathToDestReplica)) {
-                _fs.Directory.CreateDirectory(pathToDestReplica);
-            }
-
-			var filePaths = _fs.Directory.GetFiles(pathToSourceFolder);
-            var filePathsRelative = filePaths.Select(path => Path.GetRelativePath(pathToSourceFolder, path));
-			foreach (string filePath in filePathsRelative) {
-				string source = Path.Combine(pathToSourceFolder, filePath);
-				string dest = Path.Combine(pathToDestReplica, filePath);
-                _fs.File.Copy(source, dest, false);
+				_fs.File.Copy(sourceFilePath, replicaFilePath, true);
 			}
 
-            var subfolderPathsRelative = _fs.Directory.GetDirectories(pathToSourceFolder);
-            foreach (string subfolderPath in subfolderPathsRelative) {
-                string source = Path.Combine(pathToSourceFolder, subfolderPath);
-                string dest = Path.Combine(pathToDestReplica, subfolderPath);
-                CopyAllFilesInDirectory(source, dest);
-            }
+            var deletedFiles = repFilePaths.Except(orgFilePaths);
+            foreach (string path in deletedFiles) { 
+				string pathAbs = Path.Combine(pathToReplica, path);
+                _fs.File.Delete(pathAbs);
+			}
         }
-    }
+
+		public bool AreFilesEqual(string filePath1, string filePath2) {
+			if (!_fs.File.Exists(filePath1) || !_fs.File.Exists(filePath2)) {
+				return false;
+			}
+			using (var sha256 = SHA256.Create()) {
+				using (var stream1 = _fs.File.OpenRead(filePath1))
+				using (var stream2 = _fs.File.OpenRead(filePath2)) {
+					var hash1 = sha256.ComputeHash(stream1);
+					var hash2 = sha256.ComputeHash(stream2);
+
+					return StructuralComparisons.StructuralEqualityComparer.Equals(hash1, hash2);
+				}
+			}
+		}
+	}
 }

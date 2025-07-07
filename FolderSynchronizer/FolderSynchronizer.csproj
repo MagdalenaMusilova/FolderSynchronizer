@@ -7,7 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="spkl.Diffs" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="9.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.6" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="TestableIO.System.IO.Abstractions" Version="22.0.14" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.Wrappers" Version="22.0.14" />
   </ItemGroup>
