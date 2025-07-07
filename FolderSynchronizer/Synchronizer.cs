@@ -35,29 +35,39 @@ namespace FolderSynchronizer
 
         private void SyncFolder(string pathToFolder, string pathToReplica) {
 			if (!_fs.Directory.Exists(pathToReplica)) {
-				_fs.Directory.CreateDirectory(pathToReplica);
 				_logger.LogInformation($"Creating directory {pathToReplica}");
+				try {
+					_fs.Directory.CreateDirectory(pathToReplica);
+				} catch (Exception) {
+					_logger.LogError($"Failed to create directory {pathToReplica}, skipping syncing folder.", pathToReplica);
+					return;	//doesn't need to throw exception (skipping this is fine + forwarding the info), but syncing the files here can't be continued
+				}
 			}
-            SyncFiles(pathToFolder, pathToReplica);
+			SyncFiles(pathToFolder, pathToReplica);	
 
 			HashSet<string> orgFoldersRel = _fs.Directory.GetDirectories(pathToFolder)
 				.Select(path => Path.GetRelativePath(pathToFolder, path))
 				.ToHashSet();
-			HashSet<string> replicaFoldersRel = _fs.Directory.GetDirectories(pathToFolder)
+			HashSet<string> replicaFoldersRel = _fs.Directory.GetDirectories(pathToReplica)
 				.Select(path => Path.GetRelativePath(pathToFolder, path))
 				.ToHashSet();
 
 			foreach (var folderPathRel in orgFoldersRel) {
 				string orgFolderPathAbs = Path.Combine(pathToFolder, folderPathRel);
-				string replicaFolderPathAbs = Path.Combine(pathToFolder, folderPathRel);
+				string replicaFolderPathAbs = Path.Combine(pathToReplica, folderPathRel);
 				SyncFolder(orgFolderPathAbs, replicaFolderPathAbs);
 			}
 
             var deletedFolders = replicaFoldersRel.Except(orgFoldersRel);
             foreach (var folderPathRel in deletedFolders) {
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
-                _fs.Directory.Delete(folderPathAbs, true);
 				_logger.LogInformation($"Deleting directory {pathToReplica}");
+				try {
+					_fs.Directory.Delete(folderPathAbs, true);
+				} catch (Exception) {
+					_logger.LogError($"Failed to delete directory {folderPathAbs}.", folderPathAbs);
+				}
+				
 			}
 		}
 
@@ -76,15 +86,24 @@ namespace FolderSynchronizer
                 if (repFilePaths.Contains(path) && AreFilesEqual(sourceFilePath, replicaFilePath)) {  //file was not updated -> nothing has to be done
 					continue;
 				}
-				_fs.File.Copy(sourceFilePath, replicaFilePath, true);
-				_logger.LogInformation($"Creating file {replicaFilePath}");
+
+				_logger.LogInformation($"Copying file {replicaFilePath}");
+				try {
+					_fs.File.Copy(sourceFilePath, replicaFilePath, true);
+				} catch (Exception) {
+					_logger.LogError($"Failed to copy file {replicaFilePath}", replicaFilePath);
+				}
 			}
 
             var deletedFiles = repFilePaths.Except(orgFilePaths);
             foreach (string path in deletedFiles) { 
 				string pathAbs = Path.Combine(pathToReplica, path);
-                _fs.File.Delete(pathAbs);
 				_logger.LogInformation($"Deleting file {pathAbs}");
+				try {
+					_fs.File.Delete(pathAbs);
+				} catch (Exception) {
+					_logger.LogError($"Failed to delete file {pathAbs}", pathAbs);
+				}
 			}
         }
 
