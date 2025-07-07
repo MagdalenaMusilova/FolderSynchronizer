@@ -11,10 +11,12 @@ namespace FolderSynchronizer
     {
         private readonly IFileSystem _fs;
 		private List<Timer> _timers;
+		private ILogger _logger;
 
-		public Synchronizer(IFileSystem fileSystem) {
+		public Synchronizer(IFileSystem fileSystem, ILogger logger) {
 			_fs = fileSystem;
 			_timers = new List<Timer>();
+			_logger = logger;
 		}
 
 		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds) {
@@ -22,6 +24,8 @@ namespace FolderSynchronizer
 		}
 
 		public void Synchronize(string pathToFolder, string pathToReplica) {
+			_logger.LogInformation($"Starting synchronization of {pathToFolder} to {pathToReplica}");
+
             if (!_fs.Directory.Exists(pathToFolder)) {
                 throw new DirectoryNotFoundException("The directory to synchronize was not found.");
             }
@@ -32,6 +36,7 @@ namespace FolderSynchronizer
         private void SyncFolder(string pathToFolder, string pathToReplica) {
 			if (!_fs.Directory.Exists(pathToReplica)) {
 				_fs.Directory.CreateDirectory(pathToReplica);
+				_logger.LogInformation($"Creating directory {pathToReplica}");
 			}
             SyncFiles(pathToFolder, pathToReplica);
 
@@ -52,7 +57,8 @@ namespace FolderSynchronizer
             foreach (var folderPathRel in deletedFolders) {
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
                 _fs.Directory.Delete(folderPathAbs, true);
-            }
+				_logger.LogInformation($"Deleting directory {pathToReplica}");
+			}
 		}
 
 		private void SyncFiles(string pathToFolder, string pathToReplica) {
@@ -71,12 +77,14 @@ namespace FolderSynchronizer
 					continue;
 				}
 				_fs.File.Copy(sourceFilePath, replicaFilePath, true);
+				_logger.LogInformation($"Creating file {replicaFilePath}");
 			}
 
             var deletedFiles = repFilePaths.Except(orgFilePaths);
             foreach (string path in deletedFiles) { 
 				string pathAbs = Path.Combine(pathToReplica, path);
                 _fs.File.Delete(pathAbs);
+				_logger.LogInformation($"Deleting file {pathAbs}");
 			}
         }
 

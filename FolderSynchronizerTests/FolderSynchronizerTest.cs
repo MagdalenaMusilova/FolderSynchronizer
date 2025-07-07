@@ -37,7 +37,8 @@ public class FolderSynchronizerTest
     public void Synchronize_OneFileFirstTime_Pass()
     {
 		IFileSystem fs = new MockFileSystem();
-		Synchronizer synchronizer = new Synchronizer(fs);
+		ILogger logger = new FakeLogger<Synchronizer>();
+		Synchronizer synchronizer = new Synchronizer(fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
@@ -53,7 +54,8 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		Synchronizer synchronizer = new Synchronizer(fs);
+		ILogger logger = new FakeLogger<Synchronizer>();
+		Synchronizer synchronizer = new Synchronizer(fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
@@ -74,7 +76,8 @@ public class FolderSynchronizerTest
 	[Test]
 	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		Synchronizer synchronizer = new Synchronizer(fs);
+		ILogger logger = new FakeLogger<Synchronizer>();
+		Synchronizer synchronizer = new Synchronizer(fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
