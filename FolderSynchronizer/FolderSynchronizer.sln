@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36221.1 d17.14
+VisualStudioVersion = 17.14.36221.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FolderSynchronizer", "FolderSynchronizer.csproj", "{A83C7D51-F04F-4997-83C4-637BFF2953E1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FolderSynchronizerTests", "..\FolderSynchronizerTests\FolderSynchronizerTests.csproj", "{6B7AA7A9-1239-4E44-9C9F-6AFDF513D68E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FolderSynchronizerConsoleUI", "..\FolderSynchronizerConsoleUI\FolderSynchronizerConsoleUI.csproj", "{EA01D1EF-6FF3-4518-B0EF-ACD34D607D92}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{6B7AA7A9-1239-4E44-9C9F-6AFDF513D68E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B7AA7A9-1239-4E44-9C9F-6AFDF513D68E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B7AA7A9-1239-4E44-9C9F-6AFDF513D68E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA01D1EF-6FF3-4518-B0EF-ACD34D607D92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA01D1EF-6FF3-4518-B0EF-ACD34D607D92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA01D1EF-6FF3-4518-B0EF-ACD34D607D92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA01D1EF-6FF3-4518-B0EF-ACD34D607D92}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

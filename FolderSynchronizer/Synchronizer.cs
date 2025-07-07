@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using FolderSynchronizerConsoleUI;
 using spkl.Diffs;
 using System.Collections;
 using System.IO.Abstractions;
@@ -11,10 +11,10 @@ namespace FolderSynchronizer
         private readonly IFileSystem _fsSource;
 		private readonly IFileSystem _fsReplica;
 		private List<Timer> _timers;
-		private ILogger _logger;
+		private ILoggingService _logger;
 		private int _bufferSize;
 
-		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, ILogger logger, int bufferSize = 1024 * 1024) {
+		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, ILoggingService logger, int bufferSize = 1024 * 1024) {
 			_fsSource = sourceFileSystem;
 			_fsReplica = replicaFileSystem;
 			_timers = new List<Timer>();
@@ -27,7 +27,7 @@ namespace FolderSynchronizer
 		}
 
 		public void Synchronize(string pathToFolder, string pathToReplica) {
-			_logger.LogInformation($"Starting synchronization of {pathToFolder} to {pathToReplica}");
+			_logger.Log($"Starting synchronization of {pathToFolder} to {pathToReplica}");
 
             if (!_fsSource.Directory.Exists(pathToFolder)) {
                 throw new DirectoryNotFoundException("The directory to synchronize was not found.");
@@ -38,7 +38,7 @@ namespace FolderSynchronizer
 
         private void SyncFolder(string pathToFolder, string pathToReplica) {
 			if (!_fsReplica.Directory.Exists(pathToReplica)) {
-				_logger.LogInformation($"Creating directory {pathToReplica}");
+				_logger.Log($"Creating directory {pathToReplica}");
 				try {
 					_fsReplica.Directory.CreateDirectory(pathToReplica);
 				} catch (Exception e) {
@@ -64,7 +64,7 @@ namespace FolderSynchronizer
             var deletedFolders = replicaFoldersRel.Except(orgFoldersRel);
             foreach (var folderPathRel in deletedFolders) {
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
-				_logger.LogInformation($"Deleting directory {pathToReplica}");
+				_logger.Log($"Deleting directory {pathToReplica}");
 				try {
 					_fsReplica.Directory.Delete(folderPathAbs, true);
 				} catch (Exception e) {
@@ -90,7 +90,7 @@ namespace FolderSynchronizer
 					if (AreFilesEqual(sourceFilePath, replicaFilePath)) {   //file wasn't changed since last sync -> nothing has to be done
 						continue;
 					} else {    //file was changed since last sync -> update it
-						_logger.LogInformation($"Updating file {replicaFilePath}");
+						_logger.Log($"Updating file {replicaFilePath}");
 						try {
 							SyncFile(sourceFilePath, replicaFilePath);
 						} catch (Exception e) {
@@ -98,7 +98,7 @@ namespace FolderSynchronizer
 						}
 					}
 				} else {	//completely new file
-					_logger.LogInformation($"Copying file {replicaFilePath}");
+					_logger.Log($"Copying file {replicaFilePath}");
 					try {
 						CopyFile(sourceFilePath, replicaFilePath);
 					} catch (Exception e) {
@@ -110,7 +110,7 @@ namespace FolderSynchronizer
             var deletedFiles = repFilePaths.Except(orgFilePaths);
             foreach (string path in deletedFiles) { 
 				string pathAbs = Path.Combine(pathToReplica, path);
-				_logger.LogInformation($"Deleting file {pathAbs}");
+				_logger.Log($"Deleting file {pathAbs}");
 				try {
 					_fsReplica.File.Delete(pathAbs);
 				} catch (Exception e) {

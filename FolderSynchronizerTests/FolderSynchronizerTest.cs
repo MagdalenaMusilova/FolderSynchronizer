@@ -1,6 +1,4 @@
 ﻿using FolderSynchronizer;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Testing;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 
@@ -37,7 +35,7 @@ public class FolderSynchronizerTest
     public void Synchronize_OneFileFirstTime_Pass()
     {
 		IFileSystem fs = new MockFileSystem();
-		ILogger logger = new FakeLogger<Synchronizer>();
+		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
@@ -58,7 +56,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		ILogger logger = new FakeLogger<Synchronizer>();
+		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
@@ -81,7 +79,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		ILogger logger = new FakeLogger<Synchronizer>();
+		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
