@@ -1,11 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
+using spkl.Diffs;
 using System.Collections;
-using System.Diagnostics;
 using System.IO.Abstractions;
-using System.IO.MemoryMappedFiles;
-using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
-using System.Text.Json;
 
 namespace FolderSynchronizer
 {
@@ -89,15 +86,24 @@ namespace FolderSynchronizer
 				string sourceFilePath = Path.Combine(pathToFolder, path);
 				string replicaFilePath = Path.Combine(pathToReplica, path);
 
-                if (repFilePaths.Contains(path) && AreFilesEqual(sourceFilePath, replicaFilePath)) {  //file was not updated -> nothing has to be done
-					continue;
-				}
-
-				_logger.LogInformation($"Copying file {replicaFilePath}");
-				try {
-					CopyFile(sourceFilePath, replicaFilePath);
-				} catch (Exception e) {
-					_logger.LogError($"Failed to copy file {replicaFilePath}", e);
+				if (repFilePaths.Contains(path)) {
+					if (AreFilesEqual(sourceFilePath, replicaFilePath)) {   //file wasn't changed since last sync -> nothing has to be done
+						continue;
+					} else {    //file was changed since last sync -> update it
+						_logger.LogInformation($"Updating file {replicaFilePath}");
+						try {
+							SyncFile(sourceFilePath, replicaFilePath);
+						} catch (Exception e) {
+							_logger.LogError($"Failed to update file {replicaFilePath}", e);
+						}
+					}
+				} else {	//completely new file
+					_logger.LogInformation($"Copying file {replicaFilePath}");
+					try {
+						CopyFile(sourceFilePath, replicaFilePath);
+					} catch (Exception e) {
+						_logger.LogError($"Failed to copy file {replicaFilePath}", e);
+					}
 				}
 			}
 
@@ -113,13 +119,106 @@ namespace FolderSynchronizer
 			}
         }
 
+		private void SyncFile(string sourceFile, string replicaFile) {
+			List<Chunk> sourceChunks = SplitFileIntoChunks(_fsSource, sourceFile);
+			List<Chunk> replicaChunks = SplitFileIntoChunks(_fsReplica, replicaFile);
+
+			MyersDiff<Chunk> diff = new MyersDiff<Chunk>(replicaChunks.ToArray(), sourceChunks.ToArray());
+			var edits = diff.GetEditScript();
+
+			string tempFile = GetTempFileName(_fsReplica, replicaFile);
+
+			try {
+				using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
+				using (var replicaStream = _fsReplica.File.OpenRead(replicaFile))
+				using (var tempStream = _fsReplica.File.OpenWrite(tempFile)) {
+					long index = 0;
+					foreach ((int indexReplicaChunk, int sourceIndexChunk, int removeLenghtChunk, int insertLenghtChunk) in edits) {
+						int indexReplica = replicaChunks[indexReplicaChunk].index;
+						int sourceIndex = sourceChunks[sourceIndexChunk].index;
+						long removeLenght = 0;
+						long insertLenght = 0;
+
+						for (int i = indexReplicaChunk; i < removeLenghtChunk; i++) {
+							removeLenght += replicaChunks[i].size;
+						}
+						for (int i = sourceIndexChunk; i < insertLenghtChunk; i++) {
+							insertLenght += sourceChunks[i].size;
+						}
+
+						//write bytes until the next edit
+						while (index + _bufferSize <= indexReplica) {
+							CopyStream(replicaStream, tempStream, _bufferSize);
+							index += _bufferSize;
+						}
+						//perform edits
+						if (removeLenght > 0) { //skip bytes that were removed
+							replicaStream.Seek(removeLenght, SeekOrigin.Current);
+							index += removeLenght;
+						}
+						if (insertLenght > 0) {
+							sourceStream.Seek(sourceIndex, SeekOrigin.Begin);
+							for (int i = 0; i < insertLenght / _bufferSize; i++) {
+								CopyStream(sourceStream, tempStream, _bufferSize);
+							}
+							CopyStream(sourceStream, tempStream, (int)(insertLenght % _bufferSize));
+						}
+					}
+					//write the rest of file
+					while (CopyStream(replicaStream, tempStream, _bufferSize) > 0) { }
+				}
+			} catch (Exception) {
+				_fsReplica.File.Delete(tempFile);
+				throw;
+			}
+			_fsReplica.File.Replace(tempFile, replicaFile, null);
+		}
+
+		private int CopyStream(FileSystemStream source, FileSystemStream dest, int len) {
+			byte[] buffer = new byte[_bufferSize];
+			int bytesRead = source.Read(buffer, 0, len);
+			dest.Write(buffer, 0, bytesRead);
+			return bytesRead;
+		}
+
+		private string GetTempFileName(IFileSystem fs, string filePath) {
+			for (int i = 0; i < 5; i++) {
+				string res = $"{filePath}_{Guid.NewGuid()}";
+				if (!fs.File.Exists(res)) {
+					return res ;
+				}
+			}
+			throw new ArgumentException($"Failed to generate name for temporary file when copying {filePath}");
+		}
+
+		private List<Chunk> SplitFileIntoChunks(IFileSystem fs, string pathToFile) {
+			List<Chunk> chunks = new List<Chunk>();
+
+			var buffer = new byte[_bufferSize];
+			int index = 0;
+			using (var stream = fs.File.OpenRead(pathToFile)) {
+				int bytesRead;
+				while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0) {
+					byte[] hash = MD5.HashData(buffer);
+					chunks.Add(new Chunk() {
+						hash = hash,
+						size = bytesRead,
+						index = index,
+					});
+					index += bytesRead;
+				}
+			}
+
+			return chunks;
+		}
+
 		private void CopyFile(string sourceFile, string replicaFile) {
 			using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
 			using (var replicaStream = _fsReplica.File.OpenWrite(replicaFile)) {
 				byte[] buffer = new byte[_bufferSize];
-				int numOfReadBytes;
-				while ((numOfReadBytes = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
-					replicaStream.Write(buffer, 0, numOfReadBytes);
+				int bytesRead;
+				while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
+					replicaStream.Write(buffer, 0, bytesRead);
 				}
 			}
 		}
