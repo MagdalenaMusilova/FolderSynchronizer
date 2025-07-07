@@ -10,12 +10,18 @@ namespace FolderSynchronizer
     public class Synchronizer
     {
         private readonly IFileSystem _fs;
+		private List<Timer> _timers;
 
 		public Synchronizer(IFileSystem fileSystem) {
-            _fs = fileSystem;
-        }
+			_fs = fileSystem;
+			_timers = new List<Timer>();
+		}
 
-        public void Synchronize(string pathToFolder, string pathToReplica) {
+		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds) {
+			_timers.Add(new Timer(_ => Synchronize(pathToFolder, pathToReplica), null, 0, intervalInSeconds));
+		}
+
+		public void Synchronize(string pathToFolder, string pathToReplica) {
             if (!_fs.Directory.Exists(pathToFolder)) {
                 throw new DirectoryNotFoundException("The directory to synchronize was not found.");
             }

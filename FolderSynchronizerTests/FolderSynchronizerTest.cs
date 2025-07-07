@@ -71,4 +71,24 @@ public class FolderSynchronizerTest
 		Assert.That(synchronizer.AreFilesEqual(filePath, filePathReplica), "Synchronized file is not the same as the original.");
 	}
 
+	[Test]
+	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
+		IFileSystem fs = new MockFileSystem();
+		Synchronizer synchronizer = new Synchronizer(fs);
+
+		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
+		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
+		string content1 = "Melt the lard or butter/oil in a Dutch oven or other heavy soup pot over medium high heat and cook the onions until beginning to brown, about 7-10 minutes. Add the beef and cook until the beef is just starting to brown, 7-10 minutes.";
+		string content2 = "Add the bell peppers, tomatoes, and garlic and cook for another 6-8 minutes.  (Note about peppers:  Outside of Hungary it’s very difficult to find the peppers they use there.  The best ones to use in their place are red and some yellow/orange.  Avoid regular green bell peppers as they have a starkly different flavor profile.)";
+
+		// create source folder and start sync
+		string filePath = CreateFile(fs, folderPath, content1);
+		synchronizer.SynchronizePeriodically(folderPath, replicaPath, 3);
+		// edit folder and wait for sync
+		fs.File.WriteAllText(filePath, content2);
+		await Task.Delay(700);
+		// assert results
+		string filePathReplica = Path.Combine(replicaPath, Path.GetRelativePath(folderPath, filePath));
+		Assert.That(synchronizer.AreFilesEqual(filePath, filePathReplica), "Synchronized file is not the same as the original.");
+	}
 }
