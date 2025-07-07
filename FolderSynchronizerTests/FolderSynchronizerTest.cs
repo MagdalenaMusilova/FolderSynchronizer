@@ -38,24 +38,28 @@ public class FolderSynchronizerTest
     {
 		IFileSystem fs = new MockFileSystem();
 		ILogger logger = new FakeLogger<Synchronizer>();
-		Synchronizer synchronizer = new Synchronizer(fs, logger);
+		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
+
+		string content = "Melt the lard or butter/oil in a Dutch oven or other heavy soup pot over medium high heat and cook the onions until beginning to brown, about 7-10 minutes. Add the beef and cook until the beef is just starting to brown, 7-10 minutes.";
+
 		// create source folder
-		string filePath = CreateFile(fs, folderPath, 1024);
+		string filePath = CreateFile(fs, folderPath, content);
 		// synchronize
 		synchronizer.Synchronize(folderPath, replicaPath);
 		// assert results
 		string filePathReplica = Path.Combine(replicaPath,Path.GetRelativePath(folderPath, filePath));
-		Assert.That(synchronizer.AreFilesEqual(filePath, filePathReplica), "Synchronized file is not the same as the original.");
+		string replicaContent = fs.File.ReadAllText(filePathReplica);
+		Assert.That(replicaContent == content, "Synchronized file is not the same as the original.");
 	}
 
 	[Test]
 	public void Synchronize_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
 		ILogger logger = new FakeLogger<Synchronizer>();
-		Synchronizer synchronizer = new Synchronizer(fs, logger);
+		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
@@ -70,14 +74,15 @@ public class FolderSynchronizerTest
 		synchronizer.Synchronize(folderPath, replicaPath);
 		// assert results
 		string filePathReplica = Path.Combine(replicaPath, Path.GetRelativePath(folderPath, filePath));
-		Assert.That(synchronizer.AreFilesEqual(filePath, filePathReplica), "Synchronized file is not the same as the original.");
+		string replicaContent = fs.File.ReadAllText(filePathReplica);
+		Assert.That(replicaContent == content2, "Synchronized file is not the same as the original.");
 	}
 
 	[Test]
 	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
 		ILogger logger = new FakeLogger<Synchronizer>();
-		Synchronizer synchronizer = new Synchronizer(fs, logger);
+		Synchronizer synchronizer = new Synchronizer(fs, fs, logger);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);

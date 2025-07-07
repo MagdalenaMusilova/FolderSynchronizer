@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Collections;
+using System.Diagnostics;
 using System.IO.Abstractions;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -9,14 +11,18 @@ namespace FolderSynchronizer
 {
     public class Synchronizer
     {
-        private readonly IFileSystem _fs;
+        private readonly IFileSystem _fsSource;
+		private readonly IFileSystem _fsReplica;
 		private List<Timer> _timers;
 		private ILogger _logger;
+		private int _bufferSize;
 
-		public Synchronizer(IFileSystem fileSystem, ILogger logger) {
-			_fs = fileSystem;
+		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, ILogger logger, int bufferSize = 1024 * 1024) {
+			_fsSource = sourceFileSystem;
+			_fsReplica = replicaFileSystem;
 			_timers = new List<Timer>();
 			_logger = logger;
+			_bufferSize = bufferSize;
 		}
 
 		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds) {
@@ -26,7 +32,7 @@ namespace FolderSynchronizer
 		public void Synchronize(string pathToFolder, string pathToReplica) {
 			_logger.LogInformation($"Starting synchronization of {pathToFolder} to {pathToReplica}");
 
-            if (!_fs.Directory.Exists(pathToFolder)) {
+            if (!_fsSource.Directory.Exists(pathToFolder)) {
                 throw new DirectoryNotFoundException("The directory to synchronize was not found.");
             }
 
@@ -34,22 +40,22 @@ namespace FolderSynchronizer
         }
 
         private void SyncFolder(string pathToFolder, string pathToReplica) {
-			if (!_fs.Directory.Exists(pathToReplica)) {
+			if (!_fsReplica.Directory.Exists(pathToReplica)) {
 				_logger.LogInformation($"Creating directory {pathToReplica}");
 				try {
-					_fs.Directory.CreateDirectory(pathToReplica);
-				} catch (Exception) {
-					_logger.LogError($"Failed to create directory {pathToReplica}, skipping syncing folder.", pathToReplica);
+					_fsReplica.Directory.CreateDirectory(pathToReplica);
+				} catch (Exception e) {
+					_logger.LogError($"Failed to create directory {pathToReplica}, skipping syncing folder.", e);
 					return;	//doesn't need to throw exception (skipping this is fine + forwarding the info), but syncing the files here can't be continued
 				}
 			}
 			SyncFiles(pathToFolder, pathToReplica);	
 
-			HashSet<string> orgFoldersRel = _fs.Directory.GetDirectories(pathToFolder)
+			HashSet<string> orgFoldersRel = _fsSource.Directory.GetDirectories(pathToFolder)
 				.Select(path => Path.GetRelativePath(pathToFolder, path))
 				.ToHashSet();
-			HashSet<string> replicaFoldersRel = _fs.Directory.GetDirectories(pathToReplica)
-				.Select(path => Path.GetRelativePath(pathToFolder, path))
+			HashSet<string> replicaFoldersRel = _fsReplica.Directory.GetDirectories(pathToReplica)
+				.Select(path => Path.GetRelativePath(pathToReplica, path))
 				.ToHashSet();
 
 			foreach (var folderPathRel in orgFoldersRel) {
@@ -63,19 +69,19 @@ namespace FolderSynchronizer
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
 				_logger.LogInformation($"Deleting directory {pathToReplica}");
 				try {
-					_fs.Directory.Delete(folderPathAbs, true);
-				} catch (Exception) {
-					_logger.LogError($"Failed to delete directory {folderPathAbs}.", folderPathAbs);
+					_fsReplica.Directory.Delete(folderPathAbs, true);
+				} catch (Exception e) {
+					_logger.LogError($"Failed to delete directory {folderPathAbs}.", e);
 				}
 				
 			}
 		}
 
 		private void SyncFiles(string pathToFolder, string pathToReplica) {
-			HashSet<string> orgFilePaths = _fs.Directory.GetFiles(pathToFolder)
+			HashSet<string> orgFilePaths = _fsSource.Directory.GetFiles(pathToFolder)
 				.Select(path => Path.GetRelativePath(pathToFolder, path))
 				.ToHashSet();
-			HashSet<string> repFilePaths = _fs.Directory.GetFiles(pathToReplica)
+			HashSet<string> repFilePaths = _fsReplica.Directory.GetFiles(pathToReplica)
 				.Select(path => Path.GetRelativePath(pathToReplica, path))
 				.ToHashSet();
 
@@ -89,9 +95,9 @@ namespace FolderSynchronizer
 
 				_logger.LogInformation($"Copying file {replicaFilePath}");
 				try {
-					_fs.File.Copy(sourceFilePath, replicaFilePath, true);
-				} catch (Exception) {
-					_logger.LogError($"Failed to copy file {replicaFilePath}", replicaFilePath);
+					CopyFile(sourceFilePath, replicaFilePath);
+				} catch (Exception e) {
+					_logger.LogError($"Failed to copy file {replicaFilePath}", e);
 				}
 			}
 
@@ -100,20 +106,31 @@ namespace FolderSynchronizer
 				string pathAbs = Path.Combine(pathToReplica, path);
 				_logger.LogInformation($"Deleting file {pathAbs}");
 				try {
-					_fs.File.Delete(pathAbs);
-				} catch (Exception) {
-					_logger.LogError($"Failed to delete file {pathAbs}", pathAbs);
+					_fsReplica.File.Delete(pathAbs);
+				} catch (Exception e) {
+					_logger.LogError($"Failed to delete file {pathAbs}", e);
 				}
 			}
         }
 
-		public bool AreFilesEqual(string filePath1, string filePath2) {
-			if (!_fs.File.Exists(filePath1) || !_fs.File.Exists(filePath2)) {
+		private void CopyFile(string sourceFile, string replicaFile) {
+			using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
+			using (var replicaStream = _fsReplica.File.OpenWrite(replicaFile)) {
+				byte[] buffer = new byte[_bufferSize];
+				int numOfReadBytes;
+				while ((numOfReadBytes = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
+					replicaStream.Write(buffer, 0, numOfReadBytes);
+				}
+			}
+		}
+
+		public bool AreFilesEqual(string sourceFile, string replicaFile) {
+			if (!_fsSource.File.Exists(sourceFile) || !_fsReplica.File.Exists(replicaFile)) {
 				return false;
 			}
 			using (var sha256 = SHA256.Create()) {
-				using (var stream1 = _fs.File.OpenRead(filePath1))
-				using (var stream2 = _fs.File.OpenRead(filePath2)) {
+				using (var stream1 = _fsSource.File.OpenRead(sourceFile))
+				using (var stream2 = _fsReplica.File.OpenRead(replicaFile)) {
 					var hash1 = sha256.ComputeHash(stream1);
 					var hash2 = sha256.ComputeHash(stream2);
 
