@@ -1,5 +1,4 @@
 ﻿using FolderSynchronizer;
-using FolderSynchronizerTests;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -34,7 +33,7 @@ namespace FolderSynchronizerConsoleUI
 				bool quiet = args.Contains("--quiet");
 
 				IFileSystem fs = new FileSystem();
-				ILoggingService loggingService = new LogginService(logFile, !quiet);
+				ILoggingService loggingService = new LoggingService(logFile, !quiet);
 
 				Synchronizer synchronizer = new Synchronizer(fs, fs);
 

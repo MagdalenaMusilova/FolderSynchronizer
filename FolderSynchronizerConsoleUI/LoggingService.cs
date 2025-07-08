@@ -1,13 +1,13 @@
 ﻿using FolderSynchronizerConsoleUI;
 
-namespace FolderSynchronizerTests
+namespace FolderSynchronizer
 {
-	public class LogginService : ILoggingService
+	public class LoggingService : ILoggingService
 	{
 		private bool _consoleEnabled = false;
 		private StreamWriter? _logFileStream = null;
 
-		public LogginService(string? logFile = null, bool consoleEnabled = false) {
+		public LoggingService(string? logFile = null, bool consoleEnabled = false) {
 			_consoleEnabled = consoleEnabled;
 			if (logFile != null) {
 				_logFileStream = new StreamWriter(new FileStream(logFile, FileMode.Append));
