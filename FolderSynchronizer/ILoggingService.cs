@@ -9,6 +9,6 @@ namespace FolderSynchronizerConsoleUI
 	public interface ILoggingService: IDisposable
 	{
 		public void Log(string message);
-		public void LogError(string message, params object[] args);
+		public void LogError(string message, Exception e);
 	}
 }

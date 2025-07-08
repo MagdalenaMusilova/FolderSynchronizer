@@ -10,7 +10,7 @@ namespace FolderSynchronizer
 		public LoggingService(string? logFile = null, bool consoleEnabled = false) {
 			_consoleEnabled = consoleEnabled;
 			if (logFile != null) {
-				_logFileStream = new StreamWriter(new FileStream(logFile, FileMode.Append));
+				_logFileStream = new StreamWriter(new FileStream(logFile, FileMode.Append)) { AutoFlush = true};
 			}
 		}
 
@@ -28,7 +28,7 @@ namespace FolderSynchronizer
 			}
 		}
 
-		public void LogError(string message, params object[] args) {
+		public void LogError(string message, Exception e) {
 			if (_consoleEnabled) {
 				Console.WriteLine(message);
 			}
