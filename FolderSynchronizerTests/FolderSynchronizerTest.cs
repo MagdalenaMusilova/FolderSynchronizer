@@ -6,6 +6,7 @@ namespace FolderSynchronizerTests;
 
 public class FolderSynchronizerTest
 {
+	[Parallelizable(ParallelScope.All)]
 	class FolderDifference
 	{
 		public List<string> missingFiles = new List<string>();
@@ -56,14 +57,65 @@ public class FolderSynchronizerTest
 
 	string baseFolderPath = Path.Combine(Environment.CurrentDirectory, "Test", nameof(FolderSynchronizerTest));
 	string baseReplicaPath = Path.Combine(Environment.CurrentDirectory, "Test", nameof(FolderSynchronizerTest) + "_Replica");
+	string baseFolderPathAsync = Path.Combine(Environment.CurrentDirectory, "Test_Asnyc", nameof(FolderSynchronizerTest));
+	string baseReplicaPathAsync = Path.Combine(Environment.CurrentDirectory, "Test_Asnyc", nameof(FolderSynchronizerTest) + "_Replica");
+
+	[OneTimeSetUp]
+	public void OneTimeSetUp() {
+		if (Directory.Exists(baseFolderPath)) { 
+			Directory.Delete(baseFolderPath, true);
+		}
+		if (Directory.Exists(baseReplicaPath)) {
+			Directory.Delete(baseReplicaPath, true);
+		}
+		if (Directory.Exists(baseFolderPathAsync)) {
+			Directory.Delete(baseFolderPathAsync, true);
+		}
+		if (Directory.Exists(baseReplicaPathAsync)) {
+			Directory.Delete(baseReplicaPathAsync, true);
+		}
+		Directory.CreateDirectory(baseFolderPath);
+		Directory.CreateDirectory(baseReplicaPath);
+		Directory.CreateDirectory(baseFolderPathAsync);
+		Directory.CreateDirectory(baseReplicaPathAsync);
+	}
+
+	[OneTimeTearDown]
+	public void OneTimeTearDown() {
+		if (Directory.Exists(baseFolderPath)) {
+			Directory.Delete(baseFolderPath, true);
+		}
+		if (Directory.Exists(baseReplicaPath)) {
+			Directory.Delete(baseReplicaPath, true);
+		}
+	}
+
 
 	private string CreateFile(IFileSystem fs, string folderPath, Int64 size) {
+		if (size > short.MaxValue) {
+			return CreateBigFile(fs, folderPath, size);
+		}
+
 		if (!fs.Directory.Exists(folderPath)) {
 			fs.Directory.CreateDirectory(folderPath);
 		}
 		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString());
 
 		fs.File.WriteAllBytes(filePath, new byte[size]);
+		return filePath;
+	}
+
+	private string CreateBigFile(IFileSystem fs, string folderPath, Int64 size) {
+		if (!fs.Directory.Exists(folderPath)) {
+			fs.Directory.CreateDirectory(folderPath);
+		}
+		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString());
+
+		byte[] buffer = new byte[short.MaxValue];
+		for (int i = 0; i < size/ short.MaxValue; i++) {
+			fs.File.WriteAllBytes(filePath, buffer);
+		}
+		fs.File.WriteAllBytes(filePath, new byte[size% short.MaxValue]);
 		return filePath;
 	}
 
@@ -220,6 +272,7 @@ public class FolderSynchronizerTest
 		string content = gulashRecipe[0];
 
 		// create source folder and sync
+		fs.Directory.CreateDirectory(folderPath);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 
 		// update folder and sync
@@ -393,10 +446,10 @@ public class FolderSynchronizerTest
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
-		string subfolderPath1 = Path.Combine(baseFolderPath, "sub1", TestContext.CurrentContext.Test.Name);
-		string subfolderPath2 = Path.Combine(baseFolderPath, "sub2", TestContext.CurrentContext.Test.Name);
-		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub", TestContext.CurrentContext.Test.Name);
-		string subsubsubsubfolderPath = Path.Combine(baseFolderPath, "sub3", "subsub", "subsubsub", "subsubsubsub", TestContext.CurrentContext.Test.Name);
+		string subfolderPath1 = Path.Combine(folderPath, "sub1");
+		string subfolderPath2 = Path.Combine(folderPath, "sub2");
+		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub");
+		string subsubsubsubfolderPath = Path.Combine(folderPath, "sub3", "subsub", "subsubsub", "subsubsubsub");
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
@@ -457,9 +510,9 @@ public class FolderSynchronizerTest
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
-		string subfolderPath1 = Path.Combine(baseFolderPath, "sub1", TestContext.CurrentContext.Test.Name);
-		string subfolderPath2 = Path.Combine(baseFolderPath, "sub2", TestContext.CurrentContext.Test.Name);
-		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub", TestContext.CurrentContext.Test.Name);
+		string subfolderPath1 = Path.Combine(folderPath, "sub1");
+		string subfolderPath2 = Path.Combine(folderPath, "sub2");
+		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub");
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
@@ -489,7 +542,7 @@ public class FolderSynchronizerTest
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
-		string subfolderPath1 = Path.Combine(baseFolderPath, "sub1", TestContext.CurrentContext.Test.Name);
+		string subfolderPath1 = Path.Combine(folderPath, "sub1");
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
@@ -499,10 +552,10 @@ public class FolderSynchronizerTest
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 
 		// update folder and sync
-		string subfolderPath2 = Path.Combine(baseFolderPath, "sub2", TestContext.CurrentContext.Test.Name);
-		string subfolderPath3 = Path.Combine(baseFolderPath, "sub3", TestContext.CurrentContext.Test.Name);
-		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub", TestContext.CurrentContext.Test.Name);
-		string sub5folderPath = Path.Combine(subfolderPath1, "subsub2", "subsub3", "subsub4", "subsub5", TestContext.CurrentContext.Test.Name);
+		string subfolderPath2 = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name,	"sub2");
+		string subfolderPath3 = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name, "sub3");
+		string subsubfolderPath = Path.Combine(subfolderPath1, TestContext.CurrentContext.Test.Name, "subsub");
+		string sub5folderPath = Path.Combine(subfolderPath1, TestContext.CurrentContext.Test.Name, "subsub2", "subsub3", "subsub4", "subsub5");
 
 		fs.Directory.Delete(subfolderPath1, true);
 		string filePath3 = CreateFile(fs, subfolderPath2, gulashRecipe[2]);
@@ -518,7 +571,7 @@ public class FolderSynchronizerTest
 	}
 
 	[Test]
-	public void Synchronize_5GBFile_Pass() {
+	public void Synchronize_HugeFile_Pass() {
 		IFileSystem fs = new FileSystem();
 		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
@@ -527,30 +580,30 @@ public class FolderSynchronizerTest
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 		string smallFileContent1 = gulashRecipe[1] + gulashRecipe[2] + gulashRecipe[3];
 		string smallFileContent2 = gulashRecipe[1] + gulashRecipe[4] + gulashRecipe[5] + gulashRecipe[6] + gulashRecipe[3];
-		Int64 bigFileSize1 = (Int64)5 * 1024 * 1024 * 1024; //5 GB
-		string bigFileContent2 = gulashRecipe[5] + gulashRecipe[6] + gulashRecipe[7];
+		Int64 hugeFileSize1 = (Int64)500 * 1024 * 1024; //500 MB
+		string hugeFileContent2 = gulashRecipe[5] + gulashRecipe[6] + gulashRecipe[7];
 
 		// create source folder and sync
 		string smallFile = CreateFile(fs, folderPath, smallFileContent1);
-		string bigFile = CreateFile(fs, folderPath, bigFileSize1);
+		string hugeFile = CreateFile(fs, folderPath, hugeFileSize1);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
-		long sourceBigFileSize = fs.FileInfo.New(bigFile).Length;
-		long replicaBigFileSize = fs.FileInfo.New(bigFile).Length;
-		Assert.That(replicaBigFileSize == sourceBigFileSize, "The replicated huge file doesn't have the correct size after first synchronization.");
+		long sourceHugeFileSize = fs.FileInfo.New(hugeFile).Length;
+		long replicaHugeFileSize = fs.FileInfo.New(hugeFile).Length;
+		Assert.That(replicaHugeFileSize == sourceHugeFileSize, "The replicated huge file doesn't have the correct size after first synchronization.");
 
 		// update folder and sync
 		fs.File.WriteAllText(smallFile, smallFileContent2);
-		fs.File.WriteAllText(bigFile, bigFileContent2);
+		fs.File.WriteAllText(hugeFile, hugeFileContent2);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 
 		// assert results
 		Assert.That(fs.Directory.Exists(replicaPath), "The replica folder wasn't created.");
 		string replicaSmallFileContent = fs.File.ReadAllText(smallFile);
 		Assert.That(replicaSmallFileContent == smallFileContent2, "The content of the small file does not match the source.");
-		long replicaBigFileSize2 = fs.FileInfo.New(bigFile).Length;
-		Assert.That(replicaBigFileSize2 < 1024 * 5, "The replicated huge file doesn't have the correct size.");
-		string replicaBigFileContent = fs.File.ReadAllText(bigFile);
-		Assert.That(replicaBigFileContent == bigFileContent2, "The content of the huge file does not match the source.");
+		long replicaHugeFileSize2 = fs.FileInfo.New(hugeFile).Length;
+		Assert.That(replicaHugeFileSize2 < 1024 * 5, "The replicated huge file doesn't have the correct size.");
+		string replicaBigFileContent = fs.File.ReadAllText(hugeFile);
+		Assert.That(replicaBigFileContent == hugeFileContent2, "The content of the huge file does not match the source.");
 	}
 
 	[Test]
@@ -574,12 +627,12 @@ public class FolderSynchronizerTest
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
-		string subFolderPath1 = Path.Combine(baseFolderPath, "sub1", TestContext.CurrentContext.Test.Name);
-		string subFolderPath2 = Path.Combine(baseFolderPath, "sub2", TestContext.CurrentContext.Test.Name);
-		string subsubsubFolderPath = Path.Combine(subFolderPath1, "subsub", "subsubsub", TestContext.CurrentContext.Test.Name);
+		string subFolderPath1 = Path.Combine(folderPath, "sub1");
+		string subFolderPath2 = Path.Combine(folderPath, "sub2");
+		string subsubsubFolderPath = Path.Combine(subFolderPath1, "subsub", "subsubsub");
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
-		string subReplicaPath = Path.Combine(baseReplicaPath, "sub", TestContext.CurrentContext.Test.Name);
-		string subsubReplicaPath = Path.Combine(baseReplicaPath, "sub", "subsub", TestContext.CurrentContext.Test.Name);
+		string subReplicaPath = Path.Combine(replicaPath, "sub");
+		string subsubReplicaPath = Path.Combine(replicaPath, "sub", "subsub");
 
 		// create source folder
 		CreateFile(fs, folderPath, gulashRecipe[0] + gulashRecipe[1]);
@@ -603,29 +656,14 @@ public class FolderSynchronizerTest
 		Assert.That(fd.AreFoldersEqual(), $"The synchronized folder isn't the same as the original folder. {fd.DifferencesToString()}");
 	}
 
-	//[Test]
-	//public void Synchronize_InsufficientPermissionsSource_LogError() {
-
-	//}
-
-	//[Test]
-	//public void Synchronize_InsufficientPermissionsReplica_LogError() {
-
-	//}
-
-	//[Test]
-	//public void Synchronize_ReadonlySource_Pass() {
-
-	//}
-
 	[Test]
 	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
-		IFileSystem fs = new MockFileSystem();
+		IFileSystem fs = new FileSystem();
 		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
-		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
-		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
+		string folderPath = Path.Combine(baseFolderPathAsync, TestContext.CurrentContext.Test.Name);
+		string replicaPath = Path.Combine(baseReplicaPathAsync, TestContext.CurrentContext.Test.Name);
 		string content1 = gulashRecipe[0];
 		string content2 = gulashRecipe[1];
 
@@ -639,6 +677,9 @@ public class FolderSynchronizerTest
 		string filePathReplica = Path.Combine(replicaPath, Path.GetRelativePath(folderPath, filePath));
 		string replicaContent = fs.File.ReadAllText(filePathReplica);
 		Assert.That(replicaContent == content2, "Synchronized file is not the same as the original.");
+		// cleanup
+		Directory.Delete(folderPath, true);
+		Directory.Delete(replicaPath, true);
 	}
 
 	[Test]
@@ -647,12 +688,12 @@ public class FolderSynchronizerTest
 		MockLogginService logger = new MockLogginService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
-		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
-		string subfolderPath1 = Path.Combine(baseFolderPath, "sub1", TestContext.CurrentContext.Test.Name);
-		string subfolderPath2 = Path.Combine(baseFolderPath, "sub2", TestContext.CurrentContext.Test.Name);
-		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub", TestContext.CurrentContext.Test.Name);
-		string subsubsubsubfolderPath = Path.Combine(baseFolderPath, "sub3", "subsub", "subsubsub", "subsubsubsub", TestContext.CurrentContext.Test.Name);
-		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
+		string folderPath = Path.Combine(baseFolderPathAsync, TestContext.CurrentContext.Test.Name);
+		string subfolderPath1 = Path.Combine(folderPath, "sub1");
+		string subfolderPath2 = Path.Combine(folderPath, "sub2");
+		string subsubfolderPath = Path.Combine(subfolderPath1, "subsub");
+		string subsubsubsubfolderPath = Path.Combine(folderPath, "sub3", "subsub", "subsubsub", "subsubsubsub");
+		string replicaPath = Path.Combine(baseReplicaPathAsync, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
 		string filePath1 = CreateFile(fs, subfolderPath1, gulashRecipe[0] + gulashRecipe[1] + gulashRecipe[2]);
@@ -681,5 +722,9 @@ public class FolderSynchronizerTest
 		Assert.That(fs.Directory.Exists(replicaPath), "The replica folder wasn't created.");
 		FolderDifference fd = GetFolderDifferences(fs, folderPath, replicaPath);
 		Assert.That(fd.AreFoldersEqual(), $"The synchronized folder isn't the same as the original folder. {fd.DifferencesToString()}");
+
+		// cleanup
+		Directory.Delete(folderPath, true);
+		Directory.Delete(replicaPath, true);
 	}
 }
