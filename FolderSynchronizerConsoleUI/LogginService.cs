@@ -1,10 +1,4 @@
 ﻿using FolderSynchronizerConsoleUI;
-using Microsoft.Extensions.ObjectPool;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FolderSynchronizerTests
 {
@@ -20,10 +14,9 @@ namespace FolderSynchronizerTests
 			}
 		}
 
-		~LogginService() { 
-			if (_logFileStream != null) {
-				_logFileStream.Close();
-			}
+		public void Dispose() {
+			_logFileStream?.Flush();
+			_logFileStream?.Dispose();
 		}
 
 		public void Log(string message) {

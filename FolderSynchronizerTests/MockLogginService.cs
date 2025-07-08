@@ -18,6 +18,9 @@ namespace FolderSynchronizerTests
 			errorLogs = new List<(string message, object[] args)>();
 		}
 
+		public void Dispose() {
+		}
+
 		public void Log(string message) {
 			logs.Add(message);
 		}

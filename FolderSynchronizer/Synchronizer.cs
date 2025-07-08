@@ -2,31 +2,41 @@
 using spkl.Diffs;
 using System.Collections;
 using System.IO.Abstractions;
+using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
 
 namespace FolderSynchronizer
 {
-    public class Synchronizer
+    public class Synchronizer: IDisposable
     {
         private readonly IFileSystem _fsSource;
 		private readonly IFileSystem _fsReplica;
-		private List<Timer> _timers;
+		private Timer? _timer = null;
 		private ILoggingService _logger;
 		private int _bufferSize;
 
-		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, ILoggingService logger, int bufferSize = 1024 * 1024) {
+		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, int bufferSize = 1024 * 1024) {
 			_fsSource = sourceFileSystem;
 			_fsReplica = replicaFileSystem;
-			_timers = new List<Timer>();
-			_logger = logger;
 			_bufferSize = bufferSize;
 		}
 
-		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds) {
-			_timers.Add(new Timer(_ => Synchronize(pathToFolder, pathToReplica), null, 0, intervalInSeconds));
+		public void Dispose() {
+			_timer?.Dispose();
+			_logger?.Dispose();
 		}
 
-		public void Synchronize(string pathToFolder, string pathToReplica) {
+		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds, ILoggingService logger) {
+			if (_timer == null) {
+				_timer = new Timer(_ => Synchronize(pathToFolder, pathToReplica, logger), null, TimeSpan.Zero, TimeSpan.FromSeconds(intervalInSeconds));
+				_logger = logger;
+			} else {
+				throw new NotImplementedException("Multithreading is not implemented in this version.");
+			}
+		}
+
+		public void Synchronize(string pathToFolder, string pathToReplica, ILoggingService logger) {
+			_logger = logger;
 			_logger.Log($"Starting synchronization of {pathToFolder} to {pathToReplica}");
 
             if (!_fsSource.Directory.Exists(pathToFolder)) {
@@ -35,6 +45,11 @@ namespace FolderSynchronizer
 
 			SyncFolder(pathToFolder, pathToReplica);
         }
+
+		public void StopSynchronizePeriodically() {
+			_timer?.Dispose();
+			_logger?.Dispose();
+		}
 
         private void SyncFolder(string pathToFolder, string pathToReplica) {
 			if (!_fsReplica.Directory.Exists(pathToReplica)) {
@@ -64,7 +79,7 @@ namespace FolderSynchronizer
             var deletedFolders = replicaFoldersRel.Except(orgFoldersRel);
             foreach (var folderPathRel in deletedFolders) {
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
-				_logger.Log($"Deleting directory {pathToReplica}");
+				_logger.Log($"Deleting directory {folderPathAbs}");
 				try {
 					_fsReplica.Directory.Delete(folderPathAbs, true);
 				} catch (Exception e) {
@@ -88,6 +103,7 @@ namespace FolderSynchronizer
 
 				if (repFilePaths.Contains(path)) {
 					if (AreFilesEqual(sourceFilePath, replicaFilePath)) {   //file wasn't changed since last sync -> nothing has to be done
+						SetFileAttributes(sourceFilePath, replicaFilePath);	//make sure that the attributes are updated
 						continue;
 					} else {    //file was changed since last sync -> update it
 						_logger.Log($"Updating file {replicaFilePath}");
@@ -126,13 +142,14 @@ namespace FolderSynchronizer
 			MyersDiff<Chunk> diff = new MyersDiff<Chunk>(replicaChunks.ToArray(), sourceChunks.ToArray());
 			var edits = diff.GetEditScript();
 
-			string tempFile = GetTempFileName(_fsReplica, replicaFile);
+			string tempFile = GetTempFileName(replicaFile);
 
 			try {
 				using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
 				using (var replicaStream = _fsReplica.File.OpenRead(replicaFile))
 				using (var tempStream = _fsReplica.File.OpenWrite(tempFile)) {
 					long index = 0;
+
 					foreach ((int indexReplicaChunk, int sourceIndexChunk, int removeLenghtChunk, int insertLenghtChunk) in edits) {
 						int indexReplica = replicaChunks[indexReplicaChunk].index;
 						int sourceIndex = sourceChunks[sourceIndexChunk].index;
@@ -167,28 +184,19 @@ namespace FolderSynchronizer
 					//write the rest of file
 					while (CopyStream(replicaStream, tempStream, _bufferSize) > 0) { }
 				}
+				SetFileAttributes(sourceFile, tempFile);
+				_fsReplica.File.Replace(tempFile, replicaFile, null);
 			} catch (Exception) {
 				_fsReplica.File.Delete(tempFile);
 				throw;
 			}
-			_fsReplica.File.Replace(tempFile, replicaFile, null);
 		}
 
 		private int CopyStream(FileSystemStream source, FileSystemStream dest, int len) {
-			byte[] buffer = new byte[_bufferSize];
+			byte[] buffer = new byte[len];
 			int bytesRead = source.Read(buffer, 0, len);
 			dest.Write(buffer, 0, bytesRead);
 			return bytesRead;
-		}
-
-		private string GetTempFileName(IFileSystem fs, string filePath) {
-			for (int i = 0; i < 5; i++) {
-				string res = $"{filePath}_{Guid.NewGuid()}";
-				if (!fs.File.Exists(res)) {
-					return res ;
-				}
-			}
-			throw new ArgumentException($"Failed to generate name for temporary file when copying {filePath}");
 		}
 
 		private List<Chunk> SplitFileIntoChunks(IFileSystem fs, string pathToFile) {
@@ -197,9 +205,11 @@ namespace FolderSynchronizer
 			var buffer = new byte[_bufferSize];
 			int index = 0;
 			using (var stream = fs.File.OpenRead(pathToFile)) {
+				SHA256 sha256 = SHA256.Create();
 				int bytesRead;
+				
 				while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0) {
-					byte[] hash = MD5.HashData(buffer);
+					byte[] hash = sha256.ComputeHash(buffer, 0, bytesRead);
 					chunks.Add(new Chunk() {
 						hash = hash,
 						size = bytesRead,
@@ -213,29 +223,63 @@ namespace FolderSynchronizer
 		}
 
 		private void CopyFile(string sourceFile, string replicaFile) {
-			using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
-			using (var replicaStream = _fsReplica.File.OpenWrite(replicaFile)) {
-				byte[] buffer = new byte[_bufferSize];
-				int bytesRead;
-				while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
-					replicaStream.Write(buffer, 0, bytesRead);
+			try {
+				using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
+				using (var tempStream = _fsReplica.File.OpenWrite(replicaFile)) {
+					byte[] buffer = new byte[_bufferSize];
+					int bytesRead;
+					while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
+						tempStream.Write(buffer, 0, bytesRead);
+					}
 				}
+				SetFileAttributes(sourceFile, replicaFile);
+			} catch { 
+				_fsReplica.File.Delete(replicaFile);
 			}
 		}
 
-		public bool AreFilesEqual(string sourceFile, string replicaFile) {
-			if (!_fsSource.File.Exists(sourceFile) || !_fsReplica.File.Exists(replicaFile)) {
-				return false;
-			}
-			using (var sha256 = SHA256.Create()) {
-				using (var stream1 = _fsSource.File.OpenRead(sourceFile))
-				using (var stream2 = _fsReplica.File.OpenRead(replicaFile)) {
-					var hash1 = sha256.ComputeHash(stream1);
-					var hash2 = sha256.ComputeHash(stream2);
+		private void SetFileAttributes(string sourceFile, string replicaFile) {
+			var attributes = _fsSource.File.GetAttributes(sourceFile);
+			var lastUpdate = _fsSource.File.GetLastWriteTimeUtc(sourceFile);
+			var created = _fsSource.File.GetCreationTimeUtc(sourceFile);
 
-					return StructuralComparisons.StructuralEqualityComparer.Equals(hash1, hash2);
+			_fsReplica.File.SetAttributes(replicaFile, attributes);
+			_fsReplica.File.SetLastWriteTimeUtc(replicaFile, lastUpdate);
+			_fsReplica.File.SetCreationTimeUtc(replicaFile, created);
+		}
+
+		private string GetTempFileName(string filePath) {
+			for (int i = 0; i < 5; i++) {
+				string res = $"{filePath}_{Guid.NewGuid()}";
+				if (!_fsReplica.File.Exists(res)) {
+					return res;
 				}
 			}
+			throw new ArgumentException($"Failed to generate name for temporary file when copying {filePath}");
+		}
+
+		private bool AreFilesEqual(string sourceFile, string replicaFile) {
+			if (!_fsSource.File.Exists(sourceFile) || !_fsReplica.File.Exists(replicaFile) ||
+				_fsSource.FileInfo.New(sourceFile).Length != _fsReplica.FileInfo.New(replicaFile).Length) {
+				return false;
+			}
+
+			byte[] buffer1 = new byte[_bufferSize];
+			byte[] buffer2 = new byte[_bufferSize];
+			using (var stream1 = _fsSource.File.OpenRead(sourceFile))
+			using (var stream2 = _fsReplica.File.OpenRead(replicaFile)) {
+				SHA256 sha256 = SHA256.Create();
+				int bytesRead;
+				while ((bytesRead = stream1.Read(buffer1, 0, _bufferSize)) > 0) {
+					stream2.Read(buffer2, 0, _bufferSize);
+					var hash1 = sha256.ComputeHash(buffer1, 0 ,bytesRead);
+					var hash2 = sha256.ComputeHash(buffer2, 0, bytesRead);
+					if (!hash1.SequenceEqual(hash2)) {
+						return false;
+					}
+				}
+			}
+			return true;
 		}
 	}
 }

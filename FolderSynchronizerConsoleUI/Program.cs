@@ -31,18 +31,18 @@ namespace FolderSynchronizerConsoleUI
 					logFile = args[3];
 				}
 
-				bool quiet = args.Contains("-quiet");
+				bool quiet = args.Contains("--quiet");
 
 				IFileSystem fs = new FileSystem();
 				ILoggingService loggingService = new LogginService(logFile, !quiet);
 
-				Synchronizer synchronizer = new Synchronizer(fs, fs, loggingService);
+				Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 				try {
 					if (intervalBetweenUpdates > 0) {
-						synchronizer.SynchronizePeriodically(sourceFolder, replicaFolder, intervalBetweenUpdates);
+						synchronizer.SynchronizePeriodically(sourceFolder, replicaFolder, intervalBetweenUpdates, loggingService);
 					} else {
-						synchronizer.Synchronize(sourceFolder, replicaFolder);
+						synchronizer.Synchronize(sourceFolder, replicaFolder, loggingService);
 					}
 				} catch (Exception e) {
 					Console.WriteLine("Error occured while synchronizing folders.");
@@ -53,6 +53,8 @@ namespace FolderSynchronizerConsoleUI
 				WriteHelp();
 				return;
 			}
+			Console.WriteLine("Press Ctrl‑C to exit…");
+			new ManualResetEvent(false).WaitOne();
 		}
 
 		private static void WriteHelp() {

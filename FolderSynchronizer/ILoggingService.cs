@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FolderSynchronizerConsoleUI
 {
-	public interface ILoggingService
+	public interface ILoggingService: IDisposable
 	{
 		public void Log(string message);
 		public void LogError(string message, params object[] args);
