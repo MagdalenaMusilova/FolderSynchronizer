@@ -1,11 +1,15 @@
 ﻿using FolderSynchronizer;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace FolderSynchronizerTests;
 
 public class FolderSynchronizerTest
 {
+	[TestFixture]
 	[Parallelizable(ParallelScope.All)]
 	class FolderDifference
 	{
@@ -169,6 +173,20 @@ public class FolderSynchronizerTest
 		string sourceContent = fs.File.ReadAllText(sourceFile);
 		string replicaContent = fs.File.ReadAllText(replicaFile);
 		return sourceContent == replicaContent;
+	}
+
+	private void RemoveFilePermissions(MockFileSystem fs, string filePath, bool allowRead) {
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+			throw new Exception("Can't be run on this operating system.");
+		}
+		FileSecurity fileSecurity = fs.File.GetAccessControl(filePath);
+		WindowsIdentity currentUser = WindowsIdentity.GetCurrent();
+		FileSystemAccessRule rule = new FileSystemAccessRule(
+			currentUser.User,
+			allowRead ? FileSystemRights.Write : FileSystemRights.Read | FileSystemRights.Write,
+			AccessControlType.Deny);
+		fileSecurity.SetAccessRule(rule);
+		fs.File.SetAccessControl(filePath, fileSecurity);
 	}
 
 
