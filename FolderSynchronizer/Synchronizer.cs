@@ -14,10 +14,14 @@ namespace FolderSynchronizer
 		private Timer? _timer = null;
 		private ILoggingService _logger;
 		private int _bufferSize;
+		private byte[] _buffer;
+		private byte[] _buffer2;
 
 		public Synchronizer(IFileSystem sourceFileSystem, IFileSystem replicaFileSystem, int bufferSize = 1024 * 1024) {
 			_fsSource = sourceFileSystem;
 			_fsReplica = replicaFileSystem;
+			_buffer = new byte[bufferSize];
+			_buffer2 = new byte[bufferSize];
 			_bufferSize = bufferSize;
 		}
 
@@ -193,23 +197,21 @@ namespace FolderSynchronizer
 		}
 
 		private int CopyStream(FileSystemStream source, FileSystemStream dest, int len) {
-			byte[] buffer = new byte[len];
-			int bytesRead = source.Read(buffer, 0, len);
-			dest.Write(buffer, 0, bytesRead);
+			int bytesRead = source.Read(_buffer, 0, len);
+			dest.Write(_buffer, 0, bytesRead);
 			return bytesRead;
 		}
 
 		private List<Chunk> SplitFileIntoChunks(IFileSystem fs, string pathToFile) {
 			List<Chunk> chunks = new List<Chunk>();
 
-			var buffer = new byte[_bufferSize];
 			int index = 0;
 			using (var stream = fs.File.OpenRead(pathToFile)) {
 				SHA256 sha256 = SHA256.Create();
 				int bytesRead;
 				
-				while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0) {
-					byte[] hash = sha256.ComputeHash(buffer, 0, bytesRead);
+				while ((bytesRead = stream.Read(_buffer, 0, _bufferSize)) > 0) {
+					byte[] hash = sha256.ComputeHash(_buffer, 0, bytesRead);
 					chunks.Add(new Chunk() {
 						hash = hash,
 						size = bytesRead,
@@ -226,10 +228,9 @@ namespace FolderSynchronizer
 			try {
 				using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
 				using (var tempStream = _fsReplica.File.OpenWrite(replicaFile)) {
-					byte[] buffer = new byte[_bufferSize];
 					int bytesRead;
-					while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0) {
-						tempStream.Write(buffer, 0, bytesRead);
+					while ((bytesRead = sourceStream.Read(_buffer, 0, _bufferSize)) > 0) {
+						tempStream.Write(_buffer, 0, bytesRead);
 					}
 				}
 				SetFileAttributes(sourceFile, replicaFile);
@@ -264,16 +265,14 @@ namespace FolderSynchronizer
 				return false;
 			}
 
-			byte[] buffer1 = new byte[_bufferSize];
-			byte[] buffer2 = new byte[_bufferSize];
 			using (var stream1 = _fsSource.File.OpenRead(sourceFile))
 			using (var stream2 = _fsReplica.File.OpenRead(replicaFile)) {
 				SHA256 sha256 = SHA256.Create();
 				int bytesRead;
-				while ((bytesRead = stream1.Read(buffer1, 0, _bufferSize)) > 0) {
-					stream2.Read(buffer2, 0, _bufferSize);
-					var hash1 = sha256.ComputeHash(buffer1, 0 ,bytesRead);
-					var hash2 = sha256.ComputeHash(buffer2, 0, bytesRead);
+				while ((bytesRead = stream1.Read(_buffer, 0, _bufferSize)) > 0) {
+					stream2.Read(_buffer2, 0, _bufferSize);
+					var hash1 = sha256.ComputeHash(_buffer, 0 ,bytesRead);
+					var hash2 = sha256.ComputeHash(_buffer2, 0, bytesRead);
 					if (!hash1.SequenceEqual(hash2)) {
 						return false;
 					}
