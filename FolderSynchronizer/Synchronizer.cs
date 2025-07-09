@@ -156,7 +156,13 @@ namespace FolderSynchronizer
 			MyersDiff<Chunk> diff = new MyersDiff<Chunk>(replicaChunks.ToArray(), sourceChunks.ToArray());
 			var edits = diff.GetEditScript();
 
-			string tempFile = GetTempFileName(replicaFile);
+			string tempFile;
+			try {
+				tempFile = GetTempFileName(replicaFile);
+			} catch (Exception e) {
+				_logger.LogError($"Failed to update file file {replicaFile}", e);
+				return;
+			}
 
 			try {
 				using (var sourceStream = _fsSource.File.OpenRead(sourceFile))
