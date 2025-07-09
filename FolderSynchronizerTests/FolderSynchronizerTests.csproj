@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FolderSynchronizerConsoleUI\FolderSynchronizerConsoleUI.csproj" />
     <ProjectReference Include="..\FolderSynchronizer\FolderSynchronizer.csproj" />
   </ItemGroup>
 
