@@ -8,14 +8,14 @@
 		/// <summary>
 		/// The cryptographic hash of the chunk's content.
 		/// </summary>
-		public required byte[] hash;
+		public byte[] hash;
 		/// <summary>
 		/// The size of the chunk in bytes.
 		/// </summary>
-		public required int size;
+		public int size;
 		/// <summary>
 		/// The starting byte index of this chunk within the file.
 		/// </summary>
-		public required int index;
+		public int index;
 	}
 }
