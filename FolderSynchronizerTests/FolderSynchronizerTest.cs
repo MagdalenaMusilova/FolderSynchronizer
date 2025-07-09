@@ -193,7 +193,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_MockOneFileFirstTime_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
@@ -214,7 +214,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_MockOneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
@@ -237,7 +237,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_OneFileOneSync_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -258,7 +258,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_DeleteFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -282,7 +282,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_CreateFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -306,7 +306,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_UpdateFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -331,7 +331,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_UpdateFileRemoveStart_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -354,7 +354,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_FileRemoveEnd_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -377,7 +377,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_FileRemoveMiddle_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -400,7 +400,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_FileMultipleChanges_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -423,7 +423,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_EmptyFolder_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -441,7 +441,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_EmptyFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -460,7 +460,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_NestedFolders_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -501,7 +501,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_RenameFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -524,7 +524,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_DeleteFolder_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -556,7 +556,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_CreateDeleteFolder_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -591,7 +591,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_HugeFile_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -627,7 +627,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_NonexistentFolder_ThrowException() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -641,7 +641,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public void Synchronize_PreexistingReplica_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
@@ -677,7 +677,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public async Task SynchronizePeriodically_OneFileMultipleChanges_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPathAsync, TestContext.CurrentContext.Test.Name);
@@ -703,7 +703,7 @@ public class FolderSynchronizerTest
 	[Test]
 	public async Task SynchronizePeriodically_NestedFoldersCreateDeleteEdit_Pass() {
 		IFileSystem fs = new FileSystem();
-		MockLogginService logger = new MockLogginService();
+		MockLoggingService logger = new MockLoggingService();
 		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPathAsync, TestContext.CurrentContext.Test.Name);

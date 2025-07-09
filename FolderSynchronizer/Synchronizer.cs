@@ -106,7 +106,15 @@ namespace FolderSynchronizer
 				string replicaFilePath = Path.Combine(pathToReplica, path);
 
 				if (repFilePaths.Contains(path)) {
-					if (AreFilesEqual(sourceFilePath, replicaFilePath)) {   //file wasn't changed since last sync -> nothing has to be done
+					bool filesEqual;
+					try {
+						filesEqual = AreFilesEqual(sourceFilePath, replicaFilePath);
+					} catch (Exception e) {
+						_logger.LogError($"Failed to synchronize files {sourceFilePath} and {repFilePaths}.", e);
+						continue;
+					}
+
+					if (filesEqual) {   //file wasn't changed since last sync -> nothing has to be done
 						SetFileAttributes(sourceFilePath, replicaFilePath);	//make sure that the attributes are updated
 						continue;
 					} else {    //file was changed since last sync -> update it
@@ -115,6 +123,7 @@ namespace FolderSynchronizer
 							SyncFile(sourceFilePath, replicaFilePath);
 						} catch (Exception e) {
 							_logger.LogError($"Failed to update file {replicaFilePath}", e);
+							continue;
 						}
 					}
 				} else {	//completely new file
@@ -123,6 +132,7 @@ namespace FolderSynchronizer
 						CopyFile(sourceFilePath, replicaFilePath);
 					} catch (Exception e) {
 						_logger.LogError($"Failed to copy file {replicaFilePath}", e);
+						continue;
 					}
 				}
 			}
