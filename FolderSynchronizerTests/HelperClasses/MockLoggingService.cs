@@ -1,4 +1,5 @@
-﻿using FolderSynchronizerConsoleUI;
+﻿
+using FolderSynchronizer;
 
 namespace FolderSynchronizerTests.HelperClasses
 {

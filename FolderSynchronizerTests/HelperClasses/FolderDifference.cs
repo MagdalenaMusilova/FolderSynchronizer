@@ -21,7 +21,7 @@ namespace FolderSynchronizerTests.HelperClasses
 		}
 
 		private void AddFolderDifferences(IFileSystem fs, string sourceFolder, string replicaFolder) {
-			if (fs.Directory.Exists(sourceFolder) && fs.Directory.Exists(replicaFolder)) {
+			if (fs.Directory.Exists(sourceFolder) && !fs.Directory.Exists(replicaFolder)) {
 				missingFolders.Add(replicaFolder);
 			}
 
@@ -55,8 +55,8 @@ namespace FolderSynchronizerTests.HelperClasses
 		}
 
 		public bool AreFoldersEqual() {
-			return missingFiles.Count != 0 || abundantFiles.Count != 0 || differentFiles.Count != 0 ||
-				missingFolders.Count != 0 || abundantFolders.Count != 0;
+			return missingFiles.Count == 0 && abundantFiles.Count == 0 && differentFiles.Count == 0 &&
+				missingFolders.Count == 0 && abundantFolders.Count == 0;
 		}
 
 		public string DifferencesToString() {

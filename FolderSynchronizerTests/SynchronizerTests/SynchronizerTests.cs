@@ -18,43 +18,4 @@ public class SynchronizerTests
 		"Remove bay leaves, add crushed garlic, dried marjoram, and stir. Season with salt to your liking. Cover with a lid and let it rest off heat for 10 minutes.",
 		"Serve the goulash in a deep bowl with a piece of bread or warm slices of Czech dumplings (an iconic side dish!) arranged on the side of a plate. Top the dish with a few raw onion circles and sprinkle some green parsley for the final touch."
 	};
-	protected int _fileIndex = 0;
-
-	protected string CreateFile(IFileSystem fs, string folderPath, long size) {
-		if (size > short.MaxValue) {
-			return CreateBigFile(fs, folderPath, size);
-		}
-
-		if (!fs.Directory.Exists(folderPath)) {
-			fs.Directory.CreateDirectory(folderPath);
-		}
-		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString());
-
-		fs.File.WriteAllBytes(filePath, new byte[size]);
-		return filePath;
-	}
-
-	protected string CreateBigFile(IFileSystem fs, string folderPath, long size) {
-		if (!fs.Directory.Exists(folderPath)) {
-			fs.Directory.CreateDirectory(folderPath);
-		}
-		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString());
-
-		byte[] buffer = new byte[short.MaxValue];
-		for (int i = 0; i < size / short.MaxValue; i++) {
-			fs.File.WriteAllBytes(filePath, buffer);
-		}
-		fs.File.WriteAllBytes(filePath, new byte[size % short.MaxValue]);
-		return filePath;
-	}
-
-	protected string CreateFile(IFileSystem fs, string folderPath, string content) {
-		if (!fs.Directory.Exists(folderPath)) {
-			fs.Directory.CreateDirectory(folderPath);
-		}
-		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString() + ".txt");
-
-		fs.File.WriteAllText(filePath, content);
-		return filePath;
-	}
 }

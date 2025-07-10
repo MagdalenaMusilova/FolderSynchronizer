@@ -1,4 +1,5 @@
-﻿using FolderSynchronizerTests.HelperClasses;
+﻿using FolderSynchronizer;
+using FolderSynchronizerTests.HelperClasses;
 using Moq;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
@@ -21,29 +22,8 @@ public class LoggingServiceTest
 		"Remove bay leaves, add crushed garlic, dried marjoram, and stir. Season with salt to your liking. Cover with a lid and let it rest off heat for 10 minutes.",
 		"Serve the goulash in a deep bowl with a piece of bread or warm slices of Czech dumplings (an iconic side dish!) arranged on the side of a plate. Top the dish with a few raw onion circles and sprinkle some green parsley for the final touch."
 		};
-	int _fileIndex = 0;
 	string baseFolderPath = Path.Combine("C:", "Source");
 	string baseReplicaPath = Path.Combine("C:", "Replica");
-
-	private string CreateFile(IFileSystem fs, string folderPath, int size) {
-		if (!fs.Directory.Exists(folderPath)) {
-			fs.Directory.CreateDirectory(folderPath);
-		}
-		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString());
-
-		fs.File.WriteAllBytes(filePath, new byte[size]);
-		return filePath;
-	}
-
-	private string CreateFile(IFileSystem fs, string folderPath, string content) {
-		if (!fs.Directory.Exists(folderPath)) {
-			fs.Directory.CreateDirectory(folderPath);
-		}
-		string filePath = Path.Combine(folderPath, (++_fileIndex).ToString() + ".txt");
-
-		fs.File.WriteAllText(filePath, content);
-		return filePath;
-	}
 
 	private bool AllFilesMentionedInLogs(MockLoggingService loggingService, List<string> files, string basePath, out List<string> notMentionedFiles) {
 		notMentionedFiles = new List<string>();
@@ -63,27 +43,17 @@ public class LoggingServiceTest
 		return loggingService.errorLogs.Any(l => l.message.Contains(Path.GetRelativePath(basePath, file)));
 	}
 
-	private bool AllFilesMentionedInErrorLogs(MockLoggingService loggingService, List<string> files, out List<string> notMentionedFiles) {
-		notMentionedFiles = new List<string>();
-		foreach (string file in files) {
-			if (!loggingService.errorLogs.Any(l => l.message.Contains(file))) {
-				notMentionedFiles.Add(file);
-			}
-		}
-		return notMentionedFiles.Count == 0;
-	}
-
 	[Test]
 	public void LogFileCreation() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
-		string filePath = CreateFile(fs, folderPath, 8);
+		string filePath = FileCreator.CreateFile(fs, folderPath, 8);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		// assert results
 		Assert.That(FileMentionedInLogs(logger, filePath, folderPath), "The logs don't contain information about a file being created.");
@@ -93,13 +63,13 @@ public class LoggingServiceTest
 	public void LogFileDeletion() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
-		string filePath = CreateFile(fs, folderPath, 8);
+		string filePath = FileCreator.CreateFile(fs, folderPath, 8);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		logger.Clear();
 		Assert.That(logger.logs.Count == 0, "MockLoggingService contains logs even thought it was cleared.");
@@ -114,13 +84,13 @@ public class LoggingServiceTest
 	public void LogFileUpdate() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
-		string filePath = CreateFile(fs, folderPath, 8);
+		string filePath = FileCreator.CreateFile(fs, folderPath, 8);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		logger.Clear();
 		Assert.That(logger.logs.Count == 0, "MockLoggingService contains logs even thought it was cleared.");
@@ -135,18 +105,18 @@ public class LoggingServiceTest
 	public void LogFileCreationDeletionUpdate() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
 		// create source folder and sync
 		List<string> filePaths = new List<string>();
-		filePaths.Add(CreateFile(fs, folderPath, gulashRecipe[0] + gulashRecipe[1] + gulashRecipe[2]));
-		filePaths.Add(CreateFile(fs, folderPath, gulashRecipe[4]));
-		filePaths.Add(CreateFile(fs, folderPath, gulashRecipe[1] + gulashRecipe[1]));
-		filePaths.Add(CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1] + gulashRecipe[2]));
-		filePaths.Add(CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]));
+		filePaths.Add(FileCreator.CreateFile(fs, folderPath, gulashRecipe[0] + gulashRecipe[1] + gulashRecipe[2]));
+		filePaths.Add(FileCreator.CreateFile(fs, folderPath, gulashRecipe[4]));
+		filePaths.Add(FileCreator.CreateFile(fs, folderPath, gulashRecipe[1] + gulashRecipe[1]));
+		filePaths.Add(FileCreator.CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1] + gulashRecipe[2]));
+		filePaths.Add(FileCreator.CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]));
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 
 		// assert results
@@ -158,10 +128,10 @@ public class LoggingServiceTest
 		// update source folder and sync
 		//create new files
 		List<string> createdFiles = new List<string>();
-		string filePath1 = CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]);
+		string filePath1 = FileCreator.CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]);
 		filePaths.Add(filePath1);
 		createdFiles.Add(filePath1);
-		string filePath2 = CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]);
+		string filePath2 = FileCreator.CreateFile(fs, folderPath, gulashRecipe[2] + gulashRecipe[1]);
 		filePaths.Add(filePath2);
 		createdFiles.Add(filePath2);
 		//update files
@@ -185,9 +155,9 @@ public class LoggingServiceTest
 		List<string> createdNotMentioned = new List<string>();
 		Assert.That(AllFilesMentionedInLogs(logger, createdFiles, folderPath, out createdNotMentioned), $"The creation of the following files isn't in the logs: {String.Join(", ", createdNotMentioned)}");
 		List<string> updatedNotMentioned = new List<string>();
-		Assert.That(AllFilesMentionedInLogs(logger, updatedFiles, folderPath, out updatedNotMentioned), $"The creation of the following files isn't in the logs: {String.Join(", ", updatedNotMentioned)}");
+		Assert.That(AllFilesMentionedInLogs(logger, updatedFiles, folderPath, out updatedNotMentioned), $"The update of the following files isn't in the logs: {String.Join(", ", updatedNotMentioned)}");
 		List<string> deletedNotMentioned = new List<string>();
-		Assert.That(AllFilesMentionedInLogs(logger, deletedFiles, folderPath, out deletedNotMentioned), $"The creation of the following files isn't in the logs: {String.Join(", ", deletedNotMentioned)}");
+		Assert.That(AllFilesMentionedInLogs(logger, deletedFiles, folderPath, out deletedNotMentioned), $"The deletion of the following files isn't in the logs: {String.Join(", ", deletedNotMentioned)}");
 		Assert.That(logger.errorLogs.Count == 0, $"Logger contains error even thought there should be any. Error messages: {String.Join(" | ", logger.errorLogs)}");
 	}
 
@@ -196,7 +166,7 @@ public class LoggingServiceTest
 		var fsMock = new Mock<FileSystem>() { CallBase = true };
 		var fs = fsMock.Object;
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
@@ -204,15 +174,15 @@ public class LoggingServiceTest
 		string content2 = gulashRecipe[3];
 
 		// create source
-		string failDelete = CreateFile(fs, folderPath, gulashRecipe[0]);
-		string failUpdate = CreateFile(fs, folderPath, content1);
+		string failDelete = FileCreator.CreateFile(fs, folderPath, gulashRecipe[0]);
+		string failUpdate = FileCreator.CreateFile(fs, folderPath, content1);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		Assert.That(logger.errorLogs.Count == 0, $"Logger contains error even thought there should be any after the initial synchronization. Error messages: {String.Join(" | ", logger.errorLogs)}");
 		Assert.That(fs.File.Exists(failDelete), $"Test in invalid. Failed to create file {failDelete}.");
 		Assert.That(fs.File.Exists(failUpdate), $"Test in invalid. Failed to create file {failUpdate}.");
 
 		// update folder
-		string failCreate = CreateFile(fs, folderPath, gulashRecipe[0]);
+		string failCreate = FileCreator.CreateFile(fs, folderPath, gulashRecipe[0]);
 		fs.File.WriteAllText(failUpdate, content2);
 		fs.File.Delete(failDelete);
 

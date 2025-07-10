@@ -6,6 +6,11 @@
 	internal class Chunk
 	{
 		/// <summary>
+		/// Chunk with no information.
+		/// </summary>
+		public static readonly Chunk Empty = new Chunk();
+
+		/// <summary>
 		/// The cryptographic hash of the chunk's content.
 		/// </summary>
 		public byte[] hash;
@@ -17,5 +22,6 @@
 		/// The starting byte index of this chunk within the file.
 		/// </summary>
 		public int index;
+
 	}
 }

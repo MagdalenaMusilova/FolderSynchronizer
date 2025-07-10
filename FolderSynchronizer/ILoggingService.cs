@@ -1,4 +1,4 @@
-﻿namespace FolderSynchronizerConsoleUI
+﻿namespace FolderSynchronizer
 {
 	/// <summary>
 	/// Provides an interface for logging informational and error messages.

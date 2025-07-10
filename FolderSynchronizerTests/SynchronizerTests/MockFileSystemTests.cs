@@ -1,4 +1,5 @@
-﻿using FolderSynchronizerTests.HelperClasses;
+﻿using FolderSynchronizer;
+using FolderSynchronizerTests.HelperClasses;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 
@@ -35,7 +36,7 @@ public class MockFileSystemTests : SynchronizerTests
 	public void Synchronize_MockOneFileFirstTime_Pass() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
@@ -43,7 +44,7 @@ public class MockFileSystemTests : SynchronizerTests
 		string content = gulashRecipe[0];
 
 		// create source folder
-		string filePath = CreateFile(fs, folderPath, content);
+		string filePath = FileCreator.CreateFile(fs, folderPath, content);
 		// synchronize
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		// assert results
@@ -56,7 +57,7 @@ public class MockFileSystemTests : SynchronizerTests
 	public void Synchronize_MockOneFileMultipleChanges_Pass() {
 		IFileSystem fs = new MockFileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine("C:", "Source", TestContext.CurrentContext.Test.Name);
 		string replicaPath = Path.Combine("C:", "Replica", TestContext.CurrentContext.Test.Name);
@@ -64,7 +65,7 @@ public class MockFileSystemTests : SynchronizerTests
 		string content2 = gulashRecipe[1];
 
 		// create source folder and sync
-		string filePath = CreateFile(fs, folderPath, content1);
+		string filePath = FileCreator.CreateFile(fs, folderPath, content1);
 		synchronizer.Synchronize(folderPath, replicaPath, logger);
 		// edit folder and sync
 		fs.File.WriteAllText(filePath, content2);

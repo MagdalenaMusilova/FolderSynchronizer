@@ -1,6 +1,6 @@
-﻿using FolderSynchronizerConsoleUI;
+﻿using FolderSynchronizer;
 
-namespace FolderSynchronizer
+namespace FolderSynchronizerConsoleUI
 {
 	public class LoggingService : ILoggingService
 	{
@@ -17,6 +17,7 @@ namespace FolderSynchronizer
 		public void Dispose() {
 			_logFileStream?.Flush();
 			_logFileStream?.Dispose();
+			_logFileStream?.Close();
 		}
 
 		public void Log(string message) {

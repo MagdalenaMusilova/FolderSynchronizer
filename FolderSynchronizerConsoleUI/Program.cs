@@ -1,7 +1,4 @@
 ﻿using FolderSynchronizer;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
 using System.IO.Abstractions;
 
 namespace FolderSynchronizerConsoleUI
@@ -40,6 +37,8 @@ namespace FolderSynchronizerConsoleUI
 				try {
 					if (intervalBetweenUpdates > 0) {
 						synchronizer.SynchronizePeriodically(sourceFolder, replicaFolder, intervalBetweenUpdates, loggingService);
+						Console.WriteLine("Press Ctrl‑C to exit…");
+						new ManualResetEvent(false).WaitOne();
 					} else {
 						synchronizer.Synchronize(sourceFolder, replicaFolder, loggingService);
 					}
@@ -52,8 +51,6 @@ namespace FolderSynchronizerConsoleUI
 				WriteHelp();
 				return;
 			}
-			Console.WriteLine("Press Ctrl‑C to exit…");
-			new ManualResetEvent(false).WaitOne();
 		}
 
 		private static void WriteHelp() {

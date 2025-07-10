@@ -49,7 +49,7 @@ public class InputParametersTests : SynchronizerTests
 	public void Synchronize_EmptyStringSourceFolder_ThrowException() {
 		IFileSystem fs = new FileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string replicaPath = Path.Combine(baseReplicaPath, TestContext.CurrentContext.Test.Name);
 
@@ -62,7 +62,7 @@ public class InputParametersTests : SynchronizerTests
 	public void Synchronize_EmptyStringReplicaFolder_ThrowException() {
 		IFileSystem fs = new FileSystem();
 		MockLoggingService logger = new MockLoggingService();
-		FolderSynchronizer.Synchronizer synchronizer = new FolderSynchronizer.Synchronizer(fs, fs);
+		Synchronizer synchronizer = new Synchronizer(fs, fs);
 
 		string folderPath = Path.Combine(baseFolderPath, TestContext.CurrentContext.Test.Name);
 

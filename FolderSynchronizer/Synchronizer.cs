@@ -1,5 +1,4 @@
-﻿using FolderSynchronizerConsoleUI;
-using spkl.Diffs;
+﻿using spkl.Diffs;
 using System.IO.Abstractions;
 using System.Security.Cryptography;
 
@@ -38,7 +37,9 @@ namespace FolderSynchronizer
 		/// <param name="intervalInSeconds">How many seconds shoudl be between synchronizations.</param>
 		/// <param name="logger">Logger instance for logging of folder changes.</param>
 		public void SynchronizePeriodically(string pathToFolder, string pathToReplica, long intervalInSeconds, ILoggingService logger) {
+			_logger = logger;
 			if (_timer == null) {
+				_logger.Log($"Starting synchronization of {pathToFolder} to {pathToReplica} every {intervalInSeconds}.");
 				_timer = new Timer(_ => Synchronize(pathToFolder, pathToReplica, logger), null, TimeSpan.Zero, TimeSpan.FromSeconds(intervalInSeconds));
 				_logger = logger;
 			} else {
@@ -51,7 +52,7 @@ namespace FolderSynchronizer
 		/// </summary>
 		public void Synchronize(string pathToFolder, string pathToReplica, ILoggingService logger) {
 			_logger = logger;
-			_logger.Log($"Starting synchronization of {pathToFolder} to {pathToReplica}");
+			_logger.Log($"Starting synchronization of {pathToFolder} to {pathToReplica}.");
 
 			if (!_fsSource.Directory.Exists(pathToFolder)) {
 				throw new DirectoryNotFoundException("The directory to synchronize was not found.");
@@ -77,7 +78,7 @@ namespace FolderSynchronizer
 		/// </summary>
 		private void SyncFolder(string pathToFolder, string pathToReplica) {
 			if (!_fsReplica.Directory.Exists(pathToReplica)) {
-				_logger.Log($"Creating directory {pathToReplica}");
+				_logger.Log($"Creating directory {pathToReplica}.");
 				try {
 					_fsReplica.Directory.CreateDirectory(pathToReplica);
 				} catch (Exception e) {
@@ -105,7 +106,7 @@ namespace FolderSynchronizer
 			var deletedFolders = replicaFoldersRel.Except(orgFoldersRel);
 			foreach (var folderPathRel in deletedFolders) {
 				string folderPathAbs = Path.Combine(pathToReplica, folderPathRel);
-				_logger.Log($"Deleting directory {folderPathAbs}");
+				_logger.Log($"Deleting directory {folderPathAbs}.");
 				try {
 					_fsReplica.Directory.Delete(folderPathAbs, true);
 				} catch (Exception e) {
@@ -131,9 +132,10 @@ namespace FolderSynchronizer
 				string replicaFilePath = Path.Combine(pathToReplica, path);
 
 				if (repFilePaths.Contains(path)) {
+					// check if file equals
 					bool filesEqual;
 					try {
-						filesEqual = AreFilesEqual(sourceFilePath, replicaFilePath);
+						filesEqual = AreFilesEqual(sourceFilePath, replicaFilePath);	// can throw exception
 					} catch (Exception e) {
 						_logger.LogError($"Failed to synchronize files {sourceFilePath} and {repFilePaths}.", e);
 						continue;
@@ -143,7 +145,7 @@ namespace FolderSynchronizer
 						SetFileAttributes(sourceFilePath, replicaFilePath); // make sure that the attributes are updated
 						continue;
 					} else {    // file was changed since last sync -> update it
-						_logger.Log($"Updating file {replicaFilePath}");
+						_logger.Log($"Updating file {replicaFilePath}.");
 						try {
 							SyncFile(sourceFilePath, replicaFilePath);
 						} catch (Exception e) {
@@ -152,7 +154,7 @@ namespace FolderSynchronizer
 						}
 					}
 				} else {    // completely new file
-					_logger.Log($"Copying file {replicaFilePath}");
+					_logger.Log($"Copying file {replicaFilePath} .");
 					try {
 						CopyFile(sourceFilePath, replicaFilePath);
 					} catch (Exception e) {
@@ -166,7 +168,7 @@ namespace FolderSynchronizer
 			var deletedFiles = repFilePaths.Except(orgFilePaths);
 			foreach (string path in deletedFiles) {
 				string pathAbs = Path.Combine(pathToReplica, path);
-				_logger.Log($"Deleting file {pathAbs}");
+				_logger.Log($"Deleting file {pathAbs} .");
 				try {
 					_fsReplica.File.Delete(pathAbs);
 				} catch (Exception e) {
@@ -181,6 +183,8 @@ namespace FolderSynchronizer
 		private void SyncFile(string sourceFile, string replicaFile) {
 			List<Chunk> sourceChunks = SplitFileIntoChunks(_fsSource, sourceFile);
 			List<Chunk> replicaChunks = SplitFileIntoChunks(_fsReplica, replicaFile);
+			sourceChunks.Add(Chunk.Empty);	// add empty chunk at the end to prevent exceptions due to indexing 0 at empty list
+			replicaChunks.Add(Chunk.Empty);
 
 			MyersDiff<Chunk> diff = new MyersDiff<Chunk>(replicaChunks.ToArray(), sourceChunks.ToArray());
 			var edits = diff.GetEditScript();
@@ -189,7 +193,7 @@ namespace FolderSynchronizer
 			try {
 				tempFile = GetTempFileName(replicaFile);
 			} catch (Exception e) {
-				_logger.LogError($"Failed to update file file {replicaFile}", e);
+				_logger.LogError($"Failed to update file file {replicaFile}.", e);
 				return;
 			}
 
@@ -201,11 +205,11 @@ namespace FolderSynchronizer
 					long index = 0;
 
 					foreach ((int indexReplicaChunk, int sourceIndexChunk, int removeLenghtChunk, int insertLenghtChunk) in edits) {
+						// Calculate diff values relative from relative to chunks to relative to bytes 
 						int indexReplica = replicaChunks[indexReplicaChunk].index;
 						int sourceIndex = sourceChunks[sourceIndexChunk].index;
 						long removeLenght = 0;
 						long insertLenght = 0;
-
 						for (int i = indexReplicaChunk; i < removeLenghtChunk; i++) {
 							removeLenght += replicaChunks[i].size;
 						}
@@ -292,7 +296,7 @@ namespace FolderSynchronizer
 					return res;
 				}
 			}
-			throw new ArgumentException($"Failed to generate name for temporary file when copying {filePath}");
+			throw new ArgumentException($"Failed to generate name for temporary file when copying {filePath}.");
 		}
 
 		/// <summary>
